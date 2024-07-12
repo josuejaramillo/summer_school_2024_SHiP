@@ -41,15 +41,10 @@ def bilinear_interpolation(rand_points, grid_x, grid_y, distr):
         y1, y2 = grid_y[idx_y1], grid_y[idx_y2]
 
         # Get the values at the corners of the cell
-        # z11 = distr[idx_x1, idx_y1]
-        # z21 = distr[idx_x2, idx_y1]
-        # z12 = distr[idx_x1, idx_y2]
-        # z22 = distr[idx_x2, idx_y2]
-
-        z11 = distr[idx_x1, idx_y1] * (y - y1) / (y2 - y1)
-        z21 = distr[idx_x2, idx_y1] * (y - y1) / (y2 - y1)
-        z12 = distr[idx_x1, idx_y2] * (y2 - y) / (y2 - y1)
-        z22 = distr[idx_x2, idx_y2] * (y2 - y) / (y2 - y1)
+        z11 = distr[idx_x1, idx_y1]
+        z21 = distr[idx_x2, idx_y1]
+        z12 = distr[idx_x1, idx_y2]
+        z22 = distr[idx_x2, idx_y2]
 
         # Calculate the interpolation weights
         xd = (x - x1) / (x2 - x1)
@@ -75,7 +70,6 @@ def trilinear_interpolation(rand_points, grid_x, grid_y, grid_z, distr, max_ener
         x, y, z = rand_points[i]
 
         if z > max_energy[i]:
-            z = max_energy[i]
             continue
 
         idx_x1 = searchsorted_opt(grid_x, x) - 1
@@ -122,6 +116,34 @@ def trilinear_interpolation(rand_points, grid_x, grid_y, grid_z, distr, max_ener
         results[i] = result
 
     return results
+
+def fill_distr_3D(distr_grid, Distr):
+    # Fill the distribution array with corresponding 'f' values
+    mass__, angle__, energy__, value__ = np.asarray(Distr[0]), np.asarray(Distr[1]), np.asarray(Distr[2]), np.asarray(Distr[3])
+    Distr_size = len(Distr)
+    @nb.njit('(float64[:,:,::1],)', parallel=True)
+    def filling(distr_grid):
+        for i in nb.prange(Distr_size):
+            ix = searchsorted_opt(grid_x, mass__[i])
+            iy = searchsorted_opt(grid_y, angle__[i])
+            iz = searchsorted_opt(grid_z, energy__[i])
+            distr_grid[ix, iy, iz] = value__[i]
+        return distr_grid
+    return filling(distr_grid)
+
+def fill_distr_2D(energy_distr_grid, Energy_distr):
+
+    # Fill the distribution array with corresponding 'f' values
+    mass_, angle_, energy_value_ = np.asarray(Energy_distr[0]), np.asarray(Energy_distr[1]), np.asarray(Energy_distr[2])
+    Distr_size = len(Energy_distr)
+    @nb.njit('(float64[:,::1],)', parallel=True)
+    def filling(energy_distr_grid):
+        for i in nb.prange(Distr_size):
+            ix = searchsorted_opt(grid_m, mass_[i])
+            iy = searchsorted_opt(grid_a, angle_[i])
+            energy_distr_grid[ix, iy] = energy_value_[i]
+        return energy_distr_grid
+    return filling(energy_distr_grid)
 
 
 #Particle selection
@@ -171,11 +193,7 @@ grid_a = np.unique(Energy_distr.iloc[:, 1])
 energy_distr_grid = np.zeros((len(grid_m), len(grid_a)))
 
 # Fill the distribution array with corresponding 'f' values
-mass_, angle_, energy_value_ = Energy_distr[0], Energy_distr[1], Energy_distr[2]
-for i in range(len(Energy_distr)):
-    ix = searchsorted_opt(grid_m, mass_[i])
-    iy = searchsorted_opt(grid_a, angle_[i])
-    energy_distr_grid[ix, iy] = energy_value_[i]
+distr = fill_distr_2D(energy_distr_grid, Energy_distr)
 
 #Interpolated values for max energy
 max_energy = bilinear_interpolation(point_bilinear_interpolation, grid_m, grid_a, energy_distr_grid)
@@ -186,17 +204,100 @@ max_energy = bilinear_interpolation(point_bilinear_interpolation, grid_m, grid_a
 grid_x = np.unique(Distr.iloc[:, 0])
 grid_y = np.unique(Distr.iloc[:, 1])
 grid_z = np.unique(Distr.iloc[:, 2])
-distr = np.zeros((len(grid_x), len(grid_y), len(grid_z)))
+distr_grid = np.zeros((len(grid_x), len(grid_y), len(grid_z)))
 
 energy = np.random.uniform(emin, emax, nPoints)
+
+#Filling 3D grid with values of the original distribution `Distr`
+distr = fill_distr_3D(distr_grid, Distr)
 
 # Define set of points
 points_to_interpolate = np.column_stack((mass, theta, energy))
 
-t = time.time()
 interpolated_values = trilinear_interpolation(points_to_interpolate, grid_x, grid_y, grid_z, distr, max_energy)
-print(time.time()-t)
 
 
+
+#***************************Cross-check*********************************
+
+def crosscheck(var):
+    # intTime = time.time()
+    weights = interpolated_values * (max_energy - mass)
+    true_points_indices = np.random.choice(nPoints, size=10**5, p=weights/weights.sum())
+
+    # Define interpolation function using scipy.interpolate.RegularGridInterpolator
+    interpolating_function = RegularGridInterpolator((grid_x, grid_y, grid_z), distr)
+
+    fig = plt.figure()
+
+    if var == "angle":
+        # Calculate histogram with normalized probability density
+        counts, bin_edges = np.histogram(theta[true_points_indices], bins=25, density=False)
+        bin_width = np.diff(bin_edges)
+        probability_density = counts / (counts.sum() * bin_width)
+
+        y_values = np.arange(thetamin, thetamax, 0.0003)
+        point_bilinear_interpolation = np.column_stack((emin*np.ones_like(y_values), y_values))
+        emax_integration = bilinear_interpolation(point_bilinear_interpolation, grid_m, grid_a, energy_distr_grid)
+        
+        # Function for integration
+        def integrand(y):
+            def inner_integrand(z):
+                return interpolating_function((0.212, y, z))
+            emax = emax_integration[searchsorted_opt(y_values, y)] #Finds max energy for the given angle y
+            return nquad(inner_integrand, [[emin, emax]], opts={"epsabs": 1e-2, "epsrel": 1e-2})[0]
+        
+        # Calculate the angular distribution
+        angular_distribution = np.asarray([integrand(y) for y in y_values])
+        # Normalize the angular distribution by integrating
+        total_integral = simps(angular_distribution, y_values)
+        distribution_normalized = angular_distribution/total_integral
+
+        plt.plot(y_values, distribution_normalized, label="Normalized " + var +" distr.", color = "black")
+        plt.xlabel("θ [Rad]")
+        plt.ylabel("$f_{θ}$")
+
+    if var == "energy":
+        # Calculate histogram with normalized probability density
+        counts, bin_edges = np.histogram(energy[true_points_indices], bins=25, density=False)
+        bin_width = np.diff(bin_edges)
+        probability_density = counts / (counts.sum() * bin_width)
+
+        # Function for integration
+        def integrand(z):
+            def inner_integrand(y):
+                e_max = bilinear_interpolation(np.asarray([[emin, y]]), grid_m, grid_a, energy_distr_grid)
+                if z > e_max:
+                    return 0
+                else:
+                    return interpolating_function((0.212, y, z))
+            return nquad(inner_integrand, [[thetamin, thetamax]], opts={"epsabs": 1e-2, "epsrel": 1e-2})[0]
+
+        # Calculate the energy distribution
+        z_values = np.arange(emin, emax, 3)
+        energy_distribution = np.asarray([integrand(z) for z in z_values])
+
+        # Normalize the angular distribution by integrating
+        total_integral = simps(energy_distribution, z_values)
+        distribution_normalized = energy_distribution/total_integral
+
+        plt.plot(z_values, distribution_normalized, label="Normalized " + var +" distr.", color = "black")
+        plt.xlabel("E [GeV]")
+        plt.ylabel("$f_{E}$")
+
+
+    # Plot the probability density histogram
+    plt.bar(bin_edges[:-1], probability_density, width=bin_width, alpha=0.7, label= var +" points Probability Density")
+
+    # plt.xlim(0.0005, 0.01)
+    plt.legend()
+    fig.savefig(main_folder+"/"+particle_distr_folder+"/"+var+".png")
+    
+    # intExcTime = time.time() - intTime
+    # print(f"Time crosscheck {intExcTime} s")
+    # plt.show()
+
+crosscheck("angle")
+crosscheck("energy")
 
 
