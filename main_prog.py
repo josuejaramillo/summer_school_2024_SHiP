@@ -6,8 +6,8 @@ import pandas as pd
 import numpy as np
 import time
 import os
-import glob
-
+import mplhep as hep
+hep.style.use("CMS")
 
 @nb.njit('(float64[::1], float64)', inline='always')
 def searchsorted_opt(arr, val):
@@ -69,6 +69,7 @@ def trilinear_interpolation(rand_points, grid_x, grid_y, grid_z, distr, max_ener
     for i in nb.prange(len(rand_points)):
         x, y, z = rand_points[i]
 
+        #Conditional to consider angle dependance on energy
         if z > max_energy[i]:
             continue
 
@@ -132,7 +133,6 @@ def fill_distr_3D(distr_grid, Distr):
     return filling(distr_grid)
 
 def fill_distr_2D(energy_distr_grid, Energy_distr):
-
     # Fill the distribution array with corresponding 'f' values
     mass_, angle_, energy_value_ = np.asarray(Energy_distr[0]), np.asarray(Energy_distr[1]), np.asarray(Energy_distr[2])
     Distr_size = len(Energy_distr)
@@ -145,6 +145,7 @@ def fill_distr_2D(energy_distr_grid, Energy_distr):
         return energy_distr_grid
     return filling(energy_distr_grid)
 
+#*********************************************************************
 
 #Particle selection
 main_folder = "./Distributions"
@@ -154,6 +155,7 @@ print("\n Particle selector \n")
 for i in range(len(folders)):
     print(str(i+1) + ". " + folders[i])
 selected_particle = int(input("Select particle: ")) - 1
+LLP = folders[selected_particle].replace("_", " ")
 
 try:
     particle_distr_folder = folders[selected_particle]
@@ -182,6 +184,8 @@ thetamin = Distr[1].min()
 thetamax = Distr[1].max()
 theta = np.random.uniform(thetamin, thetamax, nPoints)
 
+t = time.time()
+
 #***************************Bilinearinterpolation*********************************
 
 # Define set of points
@@ -206,18 +210,20 @@ grid_y = np.unique(Distr.iloc[:, 1])
 grid_z = np.unique(Distr.iloc[:, 2])
 distr_grid = np.zeros((len(grid_x), len(grid_y), len(grid_z)))
 
-energy = np.random.uniform(emin, emax, nPoints)
+# energy = np.random.uniform(emin, emax, nPoints)
+energy = np.ones_like(theta)
 
 #Filling 3D grid with values of the original distribution `Distr`
 distr = fill_distr_3D(distr_grid, Distr)
 
 # Define set of points
 points_to_interpolate = np.column_stack((mass, theta, energy))
+energy = np.random.uniform(emin, max_energy)
+points_to_interpolate[:, 2] = energy
 
 interpolated_values = trilinear_interpolation(points_to_interpolate, grid_x, grid_y, grid_z, distr, max_energy)
 
-
-
+print(f"Interpolation time t = {time.time() - t}")
 #***************************Cross-check*********************************
 
 def crosscheck(var):
@@ -228,7 +234,7 @@ def crosscheck(var):
     # Define interpolation function using scipy.interpolate.RegularGridInterpolator
     interpolating_function = RegularGridInterpolator((grid_x, grid_y, grid_z), distr)
 
-    fig = plt.figure()
+    fig = plt.figure(figsize=(10,8))
 
     if var == "angle":
         # Calculate histogram with normalized probability density
@@ -237,6 +243,8 @@ def crosscheck(var):
         probability_density = counts / (counts.sum() * bin_width)
 
         y_values = np.arange(thetamin, thetamax, 0.0003)
+
+        #Find emax for each angle in the array to integrate
         point_bilinear_interpolation = np.column_stack((emin*np.ones_like(y_values), y_values))
         emax_integration = bilinear_interpolation(point_bilinear_interpolation, grid_m, grid_a, energy_distr_grid)
         
@@ -256,6 +264,7 @@ def crosscheck(var):
         plt.plot(y_values, distribution_normalized, label="Normalized " + var +" distr.", color = "black")
         plt.xlabel("θ [Rad]")
         plt.ylabel("$f_{θ}$")
+        plt.title(LLP + " angular distribution")
 
     if var == "energy":
         # Calculate histogram with normalized probability density
@@ -284,10 +293,10 @@ def crosscheck(var):
         plt.plot(z_values, distribution_normalized, label="Normalized " + var +" distr.", color = "black")
         plt.xlabel("E [GeV]")
         plt.ylabel("$f_{E}$")
-
+        plt.title(LLP + " energy distribution")
 
     # Plot the probability density histogram
-    plt.bar(bin_edges[:-1], probability_density, width=bin_width, alpha=0.7, label= var +" points Probability Density")
+    plt.bar(bin_edges[:-1], probability_density, width=bin_width, alpha=0.7, label= var.capitalize() +" points Probability Density")
 
     # plt.xlim(0.0005, 0.01)
     plt.legend()
