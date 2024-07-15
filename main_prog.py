@@ -132,19 +132,6 @@ def fill_distr_3D(distr_grid, Distr):
         return distr_grid
     return filling(distr_grid)
 
-def fill_distr_2D(energy_distr_grid, Energy_distr):
-    # Fill the distribution array with corresponding 'f' values
-    mass_, angle_, energy_value_ = np.asarray(Energy_distr[0]), np.asarray(Energy_distr[1]), np.asarray(Energy_distr[2])
-    Distr_size = len(Energy_distr)
-    @nb.njit('(float64[:,::1],)', parallel=True)
-    def filling(energy_distr_grid):
-        for i in nb.prange(Distr_size):
-            ix = searchsorted_opt(grid_m, mass_[i])
-            iy = searchsorted_opt(grid_a, angle_[i])
-            energy_distr_grid[ix, iy] = energy_value_[i]
-        return energy_distr_grid
-    return filling(energy_distr_grid)
-
 #*********************************************************************
 
 #Particle selection
@@ -184,8 +171,6 @@ thetamin = Distr[1].min()
 thetamax = Distr[1].max()
 theta = np.random.uniform(thetamin, thetamax, nPoints)
 
-t = time.time()
-
 #***************************Bilinearinterpolation*********************************
 
 # Define set of points
@@ -197,7 +182,10 @@ grid_a = np.unique(Energy_distr.iloc[:, 1])
 energy_distr_grid = np.zeros((len(grid_m), len(grid_a)))
 
 # Fill the distribution array with corresponding 'f' values
-distr = fill_distr_2D(energy_distr_grid, Energy_distr)
+for i in range(len(Energy_distr)):
+    ix = searchsorted_opt(grid_m, Energy_distr.iloc[i, 0])
+    iy = searchsorted_opt(grid_a, Energy_distr.iloc[i, 1])
+    energy_distr_grid[ix, iy] = Energy_distr.iloc[i, 2]
 
 #Interpolated values for max energy
 max_energy = bilinear_interpolation(point_bilinear_interpolation, grid_m, grid_a, energy_distr_grid)
@@ -223,7 +211,6 @@ points_to_interpolate[:, 2] = energy
 
 interpolated_values = trilinear_interpolation(points_to_interpolate, grid_x, grid_y, grid_z, distr, max_energy)
 
-print(f"Interpolation time t = {time.time() - t}")
 #***************************Cross-check*********************************
 
 def crosscheck(var):
