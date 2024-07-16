@@ -149,6 +149,9 @@ try:
 except:
     raise ValueError("Error during particle selection")
 
+#c*tau selection
+c_tau = float(input("\n c*tau: "))
+
 # Read data with the correct delimiter
 files = os.listdir(main_folder+"/"+particle_distr_folder)
 
@@ -164,7 +167,8 @@ Energy_distr = pd.read_csv(energy_file_path, header=None, sep="\t")
 
 # Random dataset
 nPoints = 1000000
-mass = 0.212 * np.ones(nPoints)
+m = 1
+mass = m * np.ones(nPoints)
 emin = mass[0]
 emax = Distr[2].max()
 thetamin = Distr[1].min()
@@ -207,16 +211,69 @@ distr = fill_distr_3D(distr_grid, Distr)
 # Define set of points
 points_to_interpolate = np.column_stack((mass, theta, energy))
 energy = np.random.uniform(emin, max_energy)
+
 points_to_interpolate[:, 2] = energy
 
 interpolated_values = trilinear_interpolation(points_to_interpolate, grid_x, grid_y, grid_z, distr, max_energy)
+
+
+#***************************Kinematics*********************************
+
+weights = interpolated_values * (max_energy - mass)
+true_points_indices = np.random.choice(nPoints, size=10**5, p=weights/weights.sum())
+
+#Resampled angle and energies
+r_theta = theta[true_points_indices]
+r_energy = energy[true_points_indices]
+
+#Angle phi sampling
+phi = np.random.uniform(-np.pi,np.pi, len(true_points_indices))
+
+#Momentum calculation
+momentum = np.sqrt(energy[true_points_indices]**2 - m*np.ones_like(true_points_indices)**2)
+px = momentum*np.cos(phi)*np.sin(r_theta)
+py = momentum*np.sin(phi)*np.sin(r_theta)
+pz = momentum*np.cos(r_theta)
+
+#Z values
+c = np.random.uniform(0, 1, size = 10**5)
+z = -np.cos(r_theta)*c_tau*(momentum/m)*np.log(1-c)
+
+#X and Y values
+x = z*np.cos(phi)*np.sin(r_theta)
+y = z*np.sin(phi)*np.sin(r_theta)
+
+#Decay volume geometry
+def x_max(z):
+    return 0.77 + z*np.tan(2.2/50)
+
+def y_max(z):
+    return 1.55 + z*np.tan(1.65/50)
+
+#Mask for particles decaying inside the volume
+mask = (-x_max(z) < x) & (x < x_max(z)) & (-y_max(z) < x) & (x < y_max(z)) & (32 < z) & (z < 82)
+
+kinetics = {
+    "theta": r_theta[mask],
+    "energy": r_energy[mask],
+    "px": px[mask],
+    "py": py[mask],
+    "pz": pz[mask],
+    "P": momentum[mask],
+    "x": x[mask],
+    "y": y[mask],
+    "z": z[mask],
+    "r": np.sqrt(x[mask]**2 + y[mask]**2 + z[mask]**2)
+}
+
+kinetics_df = pd.DataFrame(kinetics)
+kinetics_df.to_csv(main_folder+"/"+particle_distr_folder+"/"+"kinetic_sampling.dat", sep = "\t", index=False)
+
 
 #***************************Cross-check*********************************
 
 def crosscheck(var):
     # intTime = time.time()
-    weights = interpolated_values * (max_energy - mass)
-    true_points_indices = np.random.choice(nPoints, size=10**5, p=weights/weights.sum())
 
     # Define interpolation function using scipy.interpolate.RegularGridInterpolator
     interpolating_function = RegularGridInterpolator((grid_x, grid_y, grid_z), distr)
@@ -228,6 +285,7 @@ def crosscheck(var):
         counts, bin_edges = np.histogram(theta[true_points_indices], bins=25, density=False)
         bin_width = np.diff(bin_edges)
         probability_density = counts / (counts.sum() * bin_width)
+        # np.savetxt('angle_distr_emax.txt', theta[true_points_indices], header='theta', fmt='%f', delimiter='\t')
 
         y_values = np.arange(thetamin, thetamax, 0.0003)
 
@@ -238,7 +296,7 @@ def crosscheck(var):
         # Function for integration
         def integrand(y):
             def inner_integrand(z):
-                return interpolating_function((0.212, y, z))
+                return interpolating_function((m, y, z))
             emax = emax_integration[searchsorted_opt(y_values, y)] #Finds max energy for the given angle y
             return nquad(inner_integrand, [[emin, emax]], opts={"epsabs": 1e-2, "epsrel": 1e-2})[0]
         
@@ -266,7 +324,7 @@ def crosscheck(var):
                 if z > e_max:
                     return 0
                 else:
-                    return interpolating_function((0.212, y, z))
+                    return interpolating_function((m, y, z))
             return nquad(inner_integrand, [[thetamin, thetamax]], opts={"epsabs": 1e-2, "epsrel": 1e-2})[0]
 
         # Calculate the energy distribution
