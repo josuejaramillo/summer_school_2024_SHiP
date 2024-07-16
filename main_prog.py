@@ -251,7 +251,7 @@ def y_max(z):
     return 1.55 + z*np.tan(1.65/50)
 
 #Mask for particles decaying inside the volume
-mask = (-x_max(z) < x) & (x < x_max(z)) & (-y_max(z) < x) & (x < y_max(z)) & (32 < z) & (z < 82)
+mask = (-x_max(z) < x) & (x < x_max(z)) & (-y_max(z) < y) & (y < y_max(z)) & (32 < z) & (z < 82)
 
 kinetics = {
     "theta": r_theta[mask],
