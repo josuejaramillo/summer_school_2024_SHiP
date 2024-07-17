@@ -164,12 +164,12 @@ energy_file_path = main_folder+"/"+particle_distr_folder+"/"+energy_file[0]
 Distr = pd.read_csv(distribution_file_path, header=None, sep="\t")
 Energy_distr = pd.read_csv(energy_file_path, header=None, sep="\t")
 
-
+t_sampling = time.time()
 # Random dataset
 nPoints = 1000000
 m = 1
 mass = m * np.ones(nPoints)
-emin = mass[0]
+emin = m
 emax = Distr[2].max()
 thetamin = Distr[1].min()
 thetamax = Distr[1].max()
@@ -226,11 +226,14 @@ true_points_indices = np.random.choice(nPoints, size=10**5, p=weights/weights.su
 r_theta = theta[true_points_indices]
 r_energy = energy[true_points_indices]
 
+print(f"Energy and angle sampling time t = {time.time()-t_sampling}")
+
+t_vertices = time.time()
 #Angle phi sampling
 phi = np.random.uniform(-np.pi,np.pi, len(true_points_indices))
 
 #Momentum calculation
-momentum = np.sqrt(energy[true_points_indices]**2 - m*np.ones_like(true_points_indices)**2)
+momentum = np.sqrt(energy[true_points_indices]**2 - (m*np.ones_like(true_points_indices))**2)
 px = momentum*np.cos(phi)*np.sin(r_theta)
 py = momentum*np.sin(phi)*np.sin(r_theta)
 pz = momentum*np.cos(r_theta)
@@ -240,15 +243,17 @@ c = np.random.uniform(0, 1, size = 10**5)
 z = -np.cos(r_theta)*c_tau*(momentum/m)*np.log(1-c)
 
 #X and Y values
-x = z*np.cos(phi)*np.sin(r_theta)
-y = z*np.sin(phi)*np.sin(r_theta)
+x = z*np.cos(phi)*np.tan(r_theta)
+y = z*np.sin(phi)*np.tan(r_theta)
 
 #Decay volume geometry
 def x_max(z):
-    return 0.77 + z*np.tan(2.2/50)
+    # return 0.5 + z*np.tan(1.5/50)
+    return (0.02*(82 - z) + (2/25)*(-32 + z))/2
 
 def y_max(z):
-    return 1.55 + z*np.tan(1.65/50)
+    # return 1.35 + z*np.tan(1.75/50)
+    return (0.054*(82 - z) + 0.124*(-32 + z))/2
 
 #Mask for particles decaying inside the volume
 mask = (-x_max(z) < x) & (x < x_max(z)) & (-y_max(z) < y) & (y < y_max(z)) & (32 < z) & (z < 82)
@@ -269,6 +274,7 @@ kinetics = {
 kinetics_df = pd.DataFrame(kinetics)
 kinetics_df.to_csv(main_folder+"/"+particle_distr_folder+"/"+"kinetic_sampling.dat", sep = "\t", index=False)
 
+print(f"Decay vertices sampling time t = {time.time()-t_vertices}")
 
 #***************************Cross-check*********************************
 
@@ -328,7 +334,7 @@ def crosscheck(var):
             return nquad(inner_integrand, [[thetamin, thetamax]], opts={"epsabs": 1e-2, "epsrel": 1e-2})[0]
 
         # Calculate the energy distribution
-        z_values = np.arange(emin, emax, 3)
+        z_values = np.arange(emin, emax, 1)
         energy_distribution = np.asarray([integrand(z) for z in z_values])
 
         # Normalize the angular distribution by integrating
