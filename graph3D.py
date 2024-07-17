@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import pandas as pd
+import numpy as np
 
 # Define the vertices of the truncated pyramid
 # Lower base (smaller rectangle, now at height 32)
@@ -51,10 +52,18 @@ ax.set_ylabel('Y')
 ax.set_zlabel('Z')
 
 #Plot data
+path = "./Distributions/Higgs_like_scalars"
+# path = "./Distributions/Dark_photons"
 
-data = pd.read_csv("./Distributions/Higgs_like_scalars/kinetic_sampling.dat", sep="\t")
-ax.scatter(data["x"], data["y"], data["z"], color='k', s=3)
-# ax.scatter(data["x"][:100], data["y"][:100], data["z"][:100], color='k', s=3)
+data = pd.read_csv(path+"/kinetic_sampling.dat", sep="\t")
+x,y,z = data["x"], data["y"], data["z"]
+
+mask = data["P_decay"] >= np.random.rand(len(data["P_decay"]))
+
+ax.scatter(x[mask], y[mask], z[mask], color='k', s=1)
+# ax.scatter(x, y, z, color='k', s=1)
+
 # Show the plot
 ax.set_box_aspect([1, 1, 2])  # Aspect ratio is 1:1:2 for Z to appear taller
+fig.savefig(path+"/vertices.png")
 plt.show()

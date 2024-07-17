@@ -150,7 +150,7 @@ except:
     raise ValueError("Error during particle selection")
 
 #c*tau selection
-c_tau = float(input("\n c*tau: "))
+c_tau = float(input("\nLife time c*tau: "))
 
 # Read data with the correct delimiter
 files = os.listdir(main_folder+"/"+particle_distr_folder)
@@ -164,21 +164,8 @@ energy_file_path = main_folder+"/"+particle_distr_folder+"/"+energy_file[0]
 Distr = pd.read_csv(distribution_file_path, header=None, sep="\t")
 Energy_distr = pd.read_csv(energy_file_path, header=None, sep="\t")
 
-t_sampling = time.time()
-# Random dataset
-nPoints = 1000000
-m = 1
-mass = m * np.ones(nPoints)
-emin = m
-emax = Distr[2].max()
-thetamin = Distr[1].min()
-thetamax = Distr[1].max()
-theta = np.random.uniform(thetamin, thetamax, nPoints)
 
-#***************************Bilinearinterpolation*********************************
-
-# Define set of points
-point_bilinear_interpolation = np.column_stack((mass, theta))
+# Grids
 
 # Prepare the grid and distribution values
 grid_m = np.unique(Energy_distr.iloc[:, 0])
@@ -191,22 +178,40 @@ for i in range(len(Energy_distr)):
     iy = searchsorted_opt(grid_a, Energy_distr.iloc[i, 1])
     energy_distr_grid[ix, iy] = Energy_distr.iloc[i, 2]
 
-#Interpolated values for max energy
-max_energy = bilinear_interpolation(point_bilinear_interpolation, grid_m, grid_a, energy_distr_grid)
-
-#***************************Trilinearinterpolation*********************************
-
 # Prepare the grid and distribution values
 grid_x = np.unique(Distr.iloc[:, 0])
 grid_y = np.unique(Distr.iloc[:, 1])
 grid_z = np.unique(Distr.iloc[:, 2])
 distr_grid = np.zeros((len(grid_x), len(grid_y), len(grid_z)))
 
-# energy = np.random.uniform(emin, emax, nPoints)
-energy = np.ones_like(theta)
-
 #Filling 3D grid with values of the original distribution `Distr`
 distr = fill_distr_3D(distr_grid, Distr)
+
+# Random dataset
+nPoints = 1000000
+rsample_size = 10**5
+m = 1
+mass = m * np.ones(nPoints)
+emin = m
+emax = Distr[2].max()
+thetamin = Distr[1].min()
+thetamax = Distr[1].max()
+
+t_sampling = time.time()
+
+#***************************Bilinearinterpolation*********************************
+
+theta = np.random.uniform(thetamin, thetamax, nPoints)
+
+# Define set of points
+point_bilinear_interpolation = np.column_stack((mass, theta))
+
+#Interpolated values for max energy
+max_energy = bilinear_interpolation(point_bilinear_interpolation, grid_m, grid_a, energy_distr_grid)
+
+#***************************Trilinearinterpolation*********************************
+
+energy = np.ones_like(theta)
 
 # Define set of points
 points_to_interpolate = np.column_stack((mass, theta, energy))
@@ -214,13 +219,14 @@ energy = np.random.uniform(emin, max_energy)
 
 points_to_interpolate[:, 2] = energy
 
+# t_tri = time.time()
 interpolated_values = trilinear_interpolation(points_to_interpolate, grid_x, grid_y, grid_z, distr, max_energy)
-
+# print(f"\nTrilinear interpolation time {time.time()-t_tri}")
 
 #***************************Kinematics*********************************
 
 weights = interpolated_values * (max_energy - mass)
-true_points_indices = np.random.choice(nPoints, size=10**5, p=weights/weights.sum())
+true_points_indices = np.random.choice(nPoints, size=rsample_size, p=weights/weights.sum())
 
 #Resampled angle and energies
 r_theta = theta[true_points_indices]
@@ -233,18 +239,25 @@ t_vertices = time.time()
 phi = np.random.uniform(-np.pi,np.pi, len(true_points_indices))
 
 #Momentum calculation
-momentum = np.sqrt(energy[true_points_indices]**2 - (m*np.ones_like(true_points_indices))**2)
+momentum = np.sqrt(r_energy**2 - (m*np.ones_like(true_points_indices))**2)
 px = momentum*np.cos(phi)*np.sin(r_theta)
 py = momentum*np.sin(phi)*np.sin(r_theta)
 pz = momentum*np.cos(r_theta)
 
 #Z values
-c = np.random.uniform(0, 1, size = 10**5)
-z = -np.cos(r_theta)*c_tau*(momentum/m)*np.log(1-c)
+cmin = 1 - np.exp(-32*m / (np.cos(r_theta) * c_tau * momentum))
+cmax = 1 - np.exp(-82*m / (np.cos(r_theta) * c_tau * momentum))
+c = np.random.uniform(cmin, cmax, size = rsample_size)
+c[c==1] = 0.9999999999999999
+
+z = np.cos(r_theta)*c_tau*(momentum/m)*np.log(1/(1-c))
 
 #X and Y values
 x = z*np.cos(phi)*np.tan(r_theta)
 y = z*np.sin(phi)*np.tan(r_theta)
+
+#Decay probability
+P_decay = np.exp(-32*m / (np.cos(r_theta) * c_tau * momentum)) - np.exp(-82*m / (np.cos(r_theta) * c_tau * momentum))
 
 #Decay volume geometry
 def x_max(z):
@@ -268,13 +281,16 @@ kinetics = {
     "x": x[mask],
     "y": y[mask],
     "z": z[mask],
-    "r": np.sqrt(x[mask]**2 + y[mask]**2 + z[mask]**2)
+    "r": np.sqrt(x[mask]**2 + y[mask]**2 + z[mask]**2),
+    "P_decay" : P_decay[mask]
 }
+
+print(f"Decay vertices sampling time t = {time.time()-t_vertices} \n")
+
 
 kinetics_df = pd.DataFrame(kinetics)
 kinetics_df.to_csv(main_folder+"/"+particle_distr_folder+"/"+"kinetic_sampling.dat", sep = "\t", index=False)
 
-print(f"Decay vertices sampling time t = {time.time()-t_vertices}")
 
 #***************************Cross-check*********************************
 
@@ -357,7 +373,7 @@ def crosscheck(var):
     # print(f"Time crosscheck {intExcTime} s")
     # plt.show()
 
-crosscheck("angle")
-crosscheck("energy")
+# crosscheck("angle")
+# crosscheck("energy")
 
 
