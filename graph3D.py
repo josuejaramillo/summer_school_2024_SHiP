@@ -38,13 +38,13 @@ fig = plt.figure(figsize=(8, 6))
 ax = fig.add_subplot(111, projection='3d')
 
 # Add the faces to the plot
-poly3d = Poly3DCollection(faces, edgecolors='k', linewidths=1, alpha=0.3)
+poly3d = Poly3DCollection(faces, edgecolors='k', linewidths=1, alpha=0.2)
 ax.add_collection3d(poly3d)
 
 # Set the limits of the axes
-ax.set_xlim([-3, 3])
-ax.set_ylim([-4, 4])
-ax.set_zlim([0, 100])
+ax.set_xlim([-2, 2])
+ax.set_ylim([-3, 3])
+ax.set_zlim([30, 85])
 
 # Axis labels
 ax.set_xlabel('X')
@@ -60,10 +60,13 @@ x,y,z = data["x"], data["y"], data["z"]
 
 mask = data["P_decay"] >= np.random.rand(len(data["P_decay"]))
 
-ax.scatter(x[mask], y[mask], z[mask], color='k', s=1)
+ax.scatter(x[mask], y[mask], z[mask], color='k', s=0.5)
 # ax.scatter(x, y, z, color='k', s=1)
 
 # Show the plot
+ax.grid(False)
+ax.view_init(elev=0, azim=-60, roll = -90)
+ax.tick_params(axis='both', which='major', labelsize=8)
 ax.set_box_aspect([1, 1, 2])  # Aspect ratio is 1:1:2 for Z to appear taller
-fig.savefig(path+"/vertices.png")
+fig.savefig(path+"/vertices.png", dpi=300)
 plt.show()

@@ -187,7 +187,7 @@ distr_grid = np.zeros((len(grid_x), len(grid_y), len(grid_z)))
 #Filling 3D grid with values of the original distribution `Distr`
 distr = fill_distr_3D(distr_grid, Distr)
 
-# Random dataset
+# Initial parameters
 nPoints = 1000000
 rsample_size = 10**5
 m = 1
@@ -197,9 +197,8 @@ emax = Distr[2].max()
 thetamin = Distr[1].min()
 thetamax = Distr[1].max()
 
-t_sampling = time.time()
-
 #***************************Bilinearinterpolation*********************************
+t_sampling = time.time()
 
 theta = np.random.uniform(thetamin, thetamax, nPoints)
 
@@ -286,7 +285,6 @@ kinetics = {
 }
 
 print(f"Decay vertices sampling time t = {time.time()-t_vertices} \n")
-
 
 kinetics_df = pd.DataFrame(kinetics)
 kinetics_df.to_csv(main_folder+"/"+particle_distr_folder+"/"+"kinetic_sampling.dat", sep = "\t", index=False)
