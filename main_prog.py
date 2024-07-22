@@ -195,7 +195,7 @@ mass = m * np.ones(nPoints)
 emin = m
 emax = Distr[2].max()
 thetamin = Distr[1].min()
-thetamax = Distr[1].max()
+thetamax = 0.043 #Distr[1].max()
 
 #***************************Bilinearinterpolation*********************************
 t_sampling = time.time()
