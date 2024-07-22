@@ -2,7 +2,7 @@
 
 ## Overview
 
-`LLPsim` is a Python script designed for simulating and analyzing particle physics data. It leverages numerical and visualization techniques to analyze distributions related to LLP (Light Long-Lived Particles) scenarios. The script performs tasks such as kinematic sampling, distribution analysis, and 3D visualization of particle data.
+`LLPsim` is a Python script designed for simulating and analyzing particle physics data. It leverages numerical and visualization techniques to analyze distributions related to LLP (Long-Lived Particles) scenarios. The script performs tasks such as kinematic sampling, distribution analysis, and 3D visualization of particle data.
 
 ## Features
 
@@ -18,19 +18,19 @@
 
 3. **`LLPsim.py`**: The main script that orchestrates the entire simulation process. It initializes the LLP scenario, performs kinematic sampling, analyzes the distributions, and generates visualizations.
 
-4. **`plot_truncated_pyramid.py`**: Contains code for visualizing a truncated pyramid and scatter plotting particle data in a 3D space.
+4. **`vertex_graph.py`**: Contains code for visualizing a truncated pyramid and scatter plotting particle data in a 3D space.
 
 ## How to Use
 
 1. **Set Up Environment**:
-   - Ensure you have Python 3.x installed.
+   - Ensure you have Python 3.8.0 installed.
    - Install required packages using:
      ```bash
-     pip install numpy pandas matplotlib scipy
+     pip install -r requirements.txt
      ```
 
 2. **Prepare Input Data**:
-   - Input files should be prepared and located in the appropriate directories as specified in the script.
+   - Input files should be prepared and located in the appropriate directories as specified in the script (./Distributions/model).
 
 3. **Run the Main Script**:
    - Execute `LLPsim.py` to run the simulation and analysis:
@@ -81,3 +81,6 @@ samples_analysis = crosscheck.DistributionAnalyzer(
 )
 samples_analysis.crosscheck("angle")
 samples_analysis.crosscheck("energy")
+
+vertex_graph.plot3D(LLP.particle_path)
+
