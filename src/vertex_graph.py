@@ -4,7 +4,27 @@ import pandas as pd
 import numpy as np
 
 def plot3D(path):
-    # Define the vertices of the truncated pyramid
+
+    """
+    Plots a 3D visualization of a truncated pyramid and particle data.
+
+    This function creates a 3D plot that includes a geometric representation 
+    of a truncated pyramid and a scatter plot of particle data read from a file. 
+    The plot is customized to highlight the spatial distribution of the particles 
+    with respect to the pyramid structure, and the final image is saved to the specified path.
+
+    Parameters
+    ----------
+    path : str
+        The directory path where the data file ("kinetic_sampling.dat") is located 
+        and where the resulting plot image ("vertices.png") will be saved.
+
+    Returns
+    -------
+    None
+    """
+
+    # Define the vertices of the decay volume
 
     # Vertices for the lower base (smaller rectangle), located at height 32
     v0 = [-0.5, -1.35, 32]  # Bottom-left
@@ -22,10 +42,10 @@ def plot3D(path):
     v6 = [base_sup_x_offset, base_sup_y_offset, height]    # Top-right
     v7 = [-base_sup_x_offset, base_sup_y_offset, height]   # Top-left
 
-    # Create a list of vertices for the truncated pyramid
+    # Create a list of vertices for the decay volume
     vertices = [v0, v1, v2, v3, v4, v5, v6, v7]
 
-    # Define the faces of the truncated pyramid by connecting the vertices
+    # Define the faces of the decay volume by connecting the vertices
     faces = [
         [v0, v1, v5, v4],  # Front face
         [v1, v2, v6, v5],  # Right face
@@ -39,7 +59,7 @@ def plot3D(path):
     fig = plt.figure(figsize=(8, 6))
     ax = fig.add_subplot(111, projection='3d')
 
-    # Add the faces of the truncated pyramid to the plot
+    # Add the faces of the decay volume to the plot
     poly3d = Poly3DCollection(faces, edgecolors='k', linewidths=1, alpha=0.2)
     ax.add_collection3d(poly3d)
 
