@@ -36,9 +36,16 @@ kinematics_samples.true_samples(timing)
 # This step writes the calculated kinematic properties to a CSV file
 kinematics_samples.save_kinematics(LLP.particle_path)
 
-
+# Retrieve the momentum data from the kinematics_samples object
 momentum = kinematics_samples.get_momentum()
+
+# Create an instance of the Decays class with the specified parameters
+# This step initializes the Decays object with the mass, momentum, LLP model name, decay channel, 
+# and optionally times the computation of decay products
 decays_products = decays.Decays(LLP.mass, momentum, LLP.LLP_name, "e+e-", True)
+
+# Save the computed decay products to a file
+# This step writes the decay product information to a CSV file in the specified directory
 decays_products.save_decay_products(LLP.particle_path)
 
 

@@ -105,6 +105,5 @@ class Decays:
 
         # Create DataFrame and save to CSV
         decay_df = pd.DataFrame(decay_dic)
-        print(decay_df.keys())
         file_path = os.path.join(path, "decay_products.dat")
         decay_df.to_csv(file_path, sep="\t", index=False)

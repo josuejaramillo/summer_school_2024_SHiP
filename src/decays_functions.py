@@ -260,19 +260,37 @@ def simulate_and_boost(m, m1, m2, pdg1, pdg2, charge1, charge2, stability1, stab
 
     return boosted_data
 
-#('(float64, float64[:,::1], float64, float64, float64, float64, float64, float64, float64, float64)', parallel=True)
 @nb.njit
 def decay_products(m, momentum, m1, m2, pdg1, pdg2, charge1, charge2, stability1, stability2):
-        products = np.empty((len(momentum), 16), dtype=np.float64)
-        for i in nb.prange(len(momentum)):
-            px, py, pz, E = momentum[i]
+    """
+    Simulate the decay of a particle and compute the kinematic properties of the decay products.
 
-            # Define the kinematics of the mother particle in the lab frame
-            tablemother = np.array([px, py, pz, E, m])
-            r = simulate_and_boost(m, m1, m2, pdg1, pdg2, charge1, charge2, stability1, stability2, tablemother)
+    This function calculates the kinematic properties of two decay products for each input momentum.
+    It uses the provided masses, PDG IDs, charges, and stabilities to simulate the decay process 
+    and stores the results in a NumPy array.
 
-            px1, py1, pz1, E1, mmother, pdg2, charge1, stability1 = r[0]
-            px2, py2, pz2, E2, mmother, pdg2, charge2, stability2 = r[1]
-            products[i] = np.asarray([px1, py1, pz1, E1, m1, pdg1, charge1, stability1, px2, py2, pz2, E2, m2, pdg2, charge2, stability2])
+    Returns:
+    np.ndarray: An array of shape (n, 16) where each row contains the kinematic properties of the two decay products 
+                for each input momentum. Each row includes:
+                - px1, py1, pz1, E1: Kinematic properties of the first decay product.
+                - m1: Mass of the first decay product.
+                - pdg1: PDG ID of the first decay product.
+                - charge1: Charge of the first decay product.
+                - stability1: Stability parameter of the first decay product.
+                - px2, py2, pz2, E2: Kinematic properties of the second decay product.
+                - m2: Mass of the second decay product.
+                - pdg2: PDG ID of the second decay product.
+                - charge2: Charge of the second decay product.
+                - stability2: Stability parameter of the second decay product.
+    """
+    products = np.empty((len(momentum), 16), dtype=np.float64)
+    for i in nb.prange(len(momentum)):
+        px, py, pz, E = momentum[i]
 
-        return products
+        # Define the kinematics of the mother particle in the lab frame
+        tablemother = np.array([px, py, pz, E, m])
+        r = simulate_and_boost(m, m1, m2, pdg1, pdg2, charge1, charge2, stability1, stability2, tablemother)
+
+        # Extract kinematic properties for the two decay products
+        products[i] = r.flatten()
+    return products
