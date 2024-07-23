@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import RegularGridInterpolator
 from scipy.integrate import nquad, simps
-from src.functions import _searchsorted_opt, _bilinear_interpolation, _trilinear_interpolation, _fill_distr_3D, _fill_distr_2D
+from src.interpolation_functions import _searchsorted_opt, _bilinear_interpolation, _trilinear_interpolation, _fill_distr_3D, _fill_distr_2D
 
 class DistributionAnalyzer:
     def __init__(self, Distr, Energy_distr, m, energy, theta, LLP, path):

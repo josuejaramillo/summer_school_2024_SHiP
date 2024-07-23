@@ -2,6 +2,7 @@ from src import init
 from src import kinematics
 from src import crosscheck
 from src import vertex_graph
+from src import decays
 
 # ........................Sampling........................
 
@@ -35,6 +36,15 @@ kinematics_samples.true_samples(timing)
 # This step writes the calculated kinematic properties to a CSV file
 kinematics_samples.save_kinematics(LLP.particle_path)
 
+
+momentum = kinematics_samples.get_momentum()
+decays_products = decays.Decays(LLP.mass, momentum, LLP.LLP_name, "e+e-", True)
+decays_products.save_decay_products(LLP.particle_path)
+
+
+
+
+
 # ........................Crosscheck........................
 
 samples_analysis = crosscheck.DistributionAnalyzer(
@@ -49,12 +59,14 @@ samples_analysis = crosscheck.DistributionAnalyzer(
 
 # Perform analysis and plotting of angular distribution
 # This function calculates the normalized angular distribution and plots it.
-samples_analysis.crosscheck("angle")
+
+# samples_analysis.crosscheck("angle")
 
 # Perform analysis and plotting of energy distribution
 # This function calculates the normalized energy distribution and plots it.
-samples_analysis.crosscheck("energy")
+
+# samples_analysis.crosscheck("energy")
 
 # ........................Vertex graph........................
 
-vertex_graph.plot3D(LLP.particle_path)
+# vertex_graph.plot3D(LLP.particle_path)

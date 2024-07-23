@@ -2,7 +2,7 @@ import numpy as np
 import time
 import pandas as pd
 import numba as nb
-from src.functions import  _searchsorted_opt, _bilinear_interpolation, _trilinear_interpolation, _fill_distr_2D, _fill_distr_3D, x_max, y_max
+from src.interpolation_functions import  _searchsorted_opt, _bilinear_interpolation, _trilinear_interpolation, _fill_distr_2D, _fill_distr_3D, x_max, y_max
 
 class Grids:
     """
@@ -219,6 +219,8 @@ class Grids:
 
         if timing:
             print(f"Sampling vertices t = {time.time() - t} s")
+        
+        self.momentum = np.column_stack((px[mask], py[mask], pz[mask], self.r_energy[mask]))
 
     def save_kinematics(self, path):
         """
@@ -253,3 +255,14 @@ class Grids:
             The array of angle values if set, otherwise None.
         """
         return self.r_theta
+    
+    def get_momentum(self):
+        """
+        Retrieve the 4-momentum stored in the instance.
+
+        Returns
+        -------
+        np.ndarray or None
+            The 4-momentum, otherwise None.
+        """
+        return self.momentum
