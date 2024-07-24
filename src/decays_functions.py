@@ -1,5 +1,6 @@
 import numpy as np
 import numba as nb
+import time 
 
 """
 Indices referring to the meaning of the final table columns.
@@ -260,7 +261,7 @@ def simulate_and_boost(m, m1, m2, pdg1, pdg2, charge1, charge2, stability1, stab
 
     return boosted_data
 
-@nb.njit
+@nb.njit('(float64, float64[:,::1], float64, float64, float64, float64, float64, float64, int64, int64)')
 def decay_products(m, momentum, m1, m2, pdg1, pdg2, charge1, charge2, stability1, stability2):
     """
     Simulate the decay of a particle and compute the kinematic properties of the decay products.
@@ -283,6 +284,7 @@ def decay_products(m, momentum, m1, m2, pdg1, pdg2, charge1, charge2, stability1
                 - charge2: Charge of the second decay product.
                 - stability2: Stability parameter of the second decay product.
     """
+
     products = np.empty((len(momentum), 16), dtype=np.float64)
     for i in nb.prange(len(momentum)):
         px, py, pz, E = momentum[i]
