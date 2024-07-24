@@ -48,10 +48,6 @@ decays_products = decays.Decays(LLP.mass, momentum, LLP.LLP_name, "e+e-", True)
 # This step writes the decay product information to a CSV file in the specified directory
 decays_products.save_decay_products(LLP.particle_path)
 
-
-
-
-
 # ........................Crosscheck........................
 
 samples_analysis = crosscheck.DistributionAnalyzer(

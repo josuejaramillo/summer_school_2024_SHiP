@@ -1,6 +1,5 @@
 import numpy as np
 import numba as nb
-import time 
 
 """
 Indices referring to the meaning of the final table columns.

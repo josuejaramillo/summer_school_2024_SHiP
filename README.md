@@ -13,15 +13,17 @@
 
 ## Components
 
-1. **`kinematics.py`**: Contains functions for sampling and interpolating kinematic data. This includes grid-based sampling and resampling techniques.
+1. **`LLPsim.py`**: The main script that orchestrates the entire simulation process. It initializes the LLP scenario, performs kinematic sampling, analyzes the distributions, and generates visualizations.
 
-2. **`crosscheck.py`**: Provides the `DistributionAnalyzer` class for analyzing and plotting angular and energy distributions based on the sampled kinematic data.
+2. **`kinematics.py`**: Contains functions for sampling and interpolating kinematic data. This includes grid-based sampling and resampling techniques.
 
-3. **`LLPsim.py`**: The main script that orchestrates the entire simulation process. It initializes the LLP scenario, performs kinematic sampling, analyzes the distributions, and generates visualizations.
+3. **`decays.py`**: Simulates the decay of long-lived particles into various final states, providing detailed information about the decay poducts.
 
-4. **`vertex_graph.py`**: Contains code for visualizing a truncated pyramid and scatter plotting particle data in a 3D space.
+4. **`crosscheck.py`**: Provides the `DistributionAnalyzer` class for analyzing and plotting angular and energy distributions based on the sampled kinematic data.
 
-5. **`decays.py`**: Simulates the decay of long-lived particles into various final states, providing detailed information about the decay products.
+5. **`vertex_graph.py`**: Contains code for visualizing a truncated pyramid and scatter plotting particle data in a 3D space.
+
+
 
 ## How to Use
 
@@ -58,7 +60,7 @@
 5. **View Results**:
    - Distribution plots will be saved in the specified directory.
    - 3D visualization will also be saved and can be viewed using image viewers.
-   - Decay product details will be saved in a CSV file within the specified directory.
+   - LLP decays vertices and decay product details will be saved in a CSV file within the specified directory.
 
 ## Example Usage
 

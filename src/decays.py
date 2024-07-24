@@ -5,6 +5,48 @@ import time
 import pandas as pd
 import os
 
+"""
+This module defines decay properties for various particles and organizes them into models of Long-Lived Particles (LLPs).
+
+scalar_decays:
+    A dictionary containing decay properties for different decay channels.
+    Keys:
+        - "e+e-"    : Electron-positron decay channel.
+        - "mu+mu-"  : Muon-antimuon decay channel.
+        - "pi+pi-"  : Pion decay channel.
+        - "pi0pi0"  : Neutral pion decay channel.
+        - "k+k-"    : Kaon decay channel.
+        - "klkl"    : Long-lived kaon decay channel.
+        - "ksks"    : Short-lived kaon decay channel.
+        - "klks"    : Mixed kaon decay channel.
+        - "4pi"     : Four pion decay channel.
+        - "gg"      : Gluon decay channel.
+        - "tau+tau-": Tau-antitau decay channel.
+        - "s/s"     : Strange quark-antiquark decay channel.
+        - "c/c"     : Charm quark-antiquark decay channel.
+        - "b/b"     : Bottom quark-antiquark decay channel.
+    Values:
+        Each value is a list containing properties of the decay channel in the following order:
+        - Mass of particle 1 (GeV)
+        - Mass of particle 2 (GeV)
+        - PDG code of particle 1
+        - PDG code of particle 2
+        - Charge of particle 1
+        - Charge of particle 2
+        - Stability of particle 1 (1 indicates stable)
+        - Stability of particle 2 (1 indicates stable)
+        Note: The "4pi" channel contains properties for two sets of pion pairs.
+
+LLP_models:
+    A dictionary containing different models of Long-Lived Particles (LLPs).
+    Keys:
+        - "Higgs like scalars": Represents a model of Higgs-like scalar particles.
+    Values:
+        Each value is a dictionary containing decay channels relevant to the model.
+        Currently, it includes:
+        - scalar_decays: The dictionary defined above with various decay properties.
+"""
+
 scalar_decays = {
     "e+e-" : [0.51099e-3, 0.51099e-3, 11, -11, -1, 1, 1, 1],
     "mu+mu-" : [105.66e-3, 105.66e-3, 13, -13, -1, 1, 1, 1],
@@ -25,7 +67,6 @@ scalar_decays = {
 LLP_models = {
     "Higgs like scalars" : scalar_decays
 }
-
 
 class Decays:
     def __init__(self, m, momentum, LLP, channel, timing=False):
