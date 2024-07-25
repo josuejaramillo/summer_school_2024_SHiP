@@ -40,9 +40,9 @@ kinematics_samples.save_kinematics(LLP.particle_path)
 momentum = kinematics_samples.get_momentum()
 
 # Create an instance of the Decays class with the specified parameters
-# This step initializes the Decays object with the mass, momentum, LLP model name, decay channel, 
+# This step initializes the Decays object with the mass, momentum, LLP model name, Branching ratio distribution, 
 # and optionally times the computation of decay products
-decays_products = decays.Decays(LLP.mass, momentum, LLP.LLP_name, "e+e-", True)
+decays_products = decays.Decays(LLP.mass, momentum, LLP.LLP_name, LLP.BrRatios_distr, True)
 
 # Save the computed decay products to a file
 # This step writes the decay product information to a CSV file in the specified directory

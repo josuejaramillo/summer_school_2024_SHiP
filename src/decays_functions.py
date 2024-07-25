@@ -1,5 +1,6 @@
 import numpy as np
 import numba as nb
+from scipy.interpolate import RegularGridInterpolator
 
 """
 Indices referring to the meaning of the final table columns.
@@ -260,8 +261,71 @@ def simulate_and_boost(m, m1, m2, pdg1, pdg2, charge1, charge2, stability1, stab
 
     return boosted_data
 
-@nb.njit('(float64, float64[:,::1], float64, float64, float64, float64, float64, float64, int64, int64)')
-def decay_products(m, momentum, m1, m2, pdg1, pdg2, charge1, charge2, stability1, stability2):
+
+def LLP_BrRatios(m, LLP_BrRatios):
+    """
+    Interpolates the branching ratios for a specific mass.
+
+    Parameters:
+    -----------
+    m : float
+        The mass value at which to perform the interpolation.
+    
+    LLP_BrRatios : pandas.DataFrame
+        DataFrame containing the mass values in the first column and branching 
+        ratio values for different decay channels in the subsequent columns.
+    
+    Returns:
+    --------
+    np.ndarray
+        An array of interpolated branching ratios for the specified mass `m` 
+        across all decay channels.
+    """
+    mass_axis = LLP_BrRatios[0]
+    channels = LLP_BrRatios.columns[1:]
+    interpolators = np.asarray([RegularGridInterpolator((mass_axis,), LLP_BrRatios[channel].values) for channel in channels])
+    return np.array([interpolator([m])[0] for interpolator in interpolators])
+
+@nb.njit
+def weighted_choice(values, weights):
+    """
+    Selects a value from the `values` array based on the provided `weights`.
+
+    This function performs a weighted random selection where each value's probability
+    of being selected is proportional to its weight. The function is optimized using
+    Numba's JIT compilation for improved performance.
+
+    Parameters:
+    -----------
+    values : np.ndarray
+        An array of values from which to select.
+    
+    weights : np.ndarray
+        An array of weights corresponding to the values. The weights determine the 
+        likelihood of each value being selected. Should be non-negative and of the 
+        same length as `values`.
+
+    Returns:
+    --------
+    selected_value : 
+        The selected value from the `values` array based on the weighted random choice.
+    
+    """
+    total_weight = np.sum(weights)
+    cumulative_weights = np.cumsum(weights) / total_weight
+    
+    rand = np.random.rand()
+    
+    # Encuentra el índice del valor correspondiente
+    index = 0
+    while index < len(cumulative_weights) and rand >= cumulative_weights[index]:
+        index += 1
+    
+    return values[index]
+
+
+@nb.njit('(float64, float64[:,::1], float64[::1], float64[:,::1],)')
+def decay_products(m, momentum, BrRatio, decay_model):
     """
     Simulate the decay of a particle and compute the kinematic properties of the decay products.
 
@@ -284,8 +348,18 @@ def decay_products(m, momentum, m1, m2, pdg1, pdg2, charge1, charge2, stability1
                 - stability2: Stability parameter of the second decay product.
     """
 
+    # LLP_models = np.asarray([scalar_decays])
+    # model = LLP_models[LLP_models_index]
+
     products = np.empty((len(momentum), 16), dtype=np.float64)
+    chan = np.arange(0, len(BrRatio), 1) # Channel indices
+    
     for i in nb.prange(len(momentum)):
+
+        # channel = np.random.choice(len(model), size=1, p=BrRatio)
+        channel = weighted_choice(chan, BrRatio)
+        m1, m2, pdg1, pdg2, charge1, charge2, stability1, stability2 = decay_model[channel]
+
         px, py, pz, E = momentum[i]
 
         # Define the kinematics of the mother particle in the lab frame
@@ -294,4 +368,5 @@ def decay_products(m, momentum, m1, m2, pdg1, pdg2, charge1, charge2, stability1
 
         # Extract kinematic properties for the two decay products
         products[i] = r.flatten()
+
     return products

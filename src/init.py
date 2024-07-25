@@ -92,12 +92,16 @@ class LLP:
             files = os.listdir(self.particle_path)
             distribution_file = next(f for f in files if f.startswith('D'))
             energy_file = next(f for f in files if f.startswith('E'))
+            BrRatios_file = next(f for f in files if f.startswith('BrR'))
 
             distribution_file_path = os.path.join(self.particle_path, distribution_file)
             energy_file_path = os.path.join(self.particle_path, energy_file)
+            BrRatios_file_path = os.path.join(self.particle_path, BrRatios_file)
 
             self.Distr = pd.read_csv(distribution_file_path, header=None, sep="\t")
             self.Energy_distr = pd.read_csv(energy_file_path, header=None, sep="\t")
+            self.BrRatios_distr = pd.read_csv(BrRatios_file_path, header=None, sep="\t")
+            
         except StopIteration:
             raise FileNotFoundError("Distribution or Energy file not found in the selected particle folder.")
         except Exception as e:
