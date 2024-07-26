@@ -32,6 +32,8 @@ class LLP:
         Prompts the user to select a particle from available folders.
     import_distributions()
         Imports distribution and energy files for the selected particle.
+    import_decay_channels()
+        Imports decay channels for the selected particle.    
     prompt_mass_and_ctau()
         Prompts the user to input the mass and c*tau values.
     """
@@ -48,10 +50,12 @@ class LLP:
         self.LLP_name = ""
         self.mass = 0.0
         self.c_tau = 0.0
+        self.decay_channels = None
 
         self.select_particle()
         self.import_distributions()
         self.prompt_mass_and_ctau()
+        self.import_decay_channels()
 
     def select_particle(self):
         """
@@ -103,7 +107,7 @@ class LLP:
             self.BrRatios_distr = pd.read_csv(BrRatios_file_path, header=None, sep="\t")
             
         except StopIteration:
-            raise FileNotFoundError("Distribution or Energy file not found in the selected particle folder.")
+            raise FileNotFoundError("Distribution file not found in the selected particle folder.")
         except Exception as e:
             raise Exception(f"Error importing distributions: {e}")
 
@@ -121,3 +125,76 @@ class LLP:
             self.c_tau = float(input("\nLife time c*tau: "))
         except ValueError:
             raise ValueError("Invalid input for mass or c*tau. Please enter numerical values.")
+
+
+    def import_decay_channels(self):
+        """
+        Imports decay channels data from a text file and stores it as a NumPy array.
+
+        The function reads a text file containing decay channel data, processes each line to extract relevant
+        values, and converts them into a NumPy array. The file is expected to be located in the directory
+        specified by `self.particle_path` with the filename 'decay_channels.txt'.
+
+        The text file should have rows with values separated by spaces or tabs. Each line should contain:
+        - Mass (twice, for two identical values)
+        - Particle IDs (two entries for particle and antiparticle)
+        - Charges of the particles (two entries)
+        - Additional information (four entries for specific cases)
+
+        Raises:
+            FileNotFoundError: If the decay channels file cannot be found in the specified directory.
+            Exception: For any other errors encountered during file processing.
+
+        Attributes:
+            self.decay_channels (np.ndarray): A NumPy array containing the processed decay channel data.
+        """
+
+        def parse_value(val):
+            """
+            Converts a string value to a float or fraction.
+
+            Tries to evaluate the value as a Python expression (e.g., fractions like '1/3') or converts it
+            directly to a float if evaluation fails.
+
+            Args:
+                val (str): The string representation of the value to convert.
+
+            Returns:
+                float: The converted float or fractional value.
+            """
+            try:
+                return eval(val)  # Convert to float or fraction
+            except:
+                return float(val)  # In case of direct float representation
+
+        def create_array_from_file(filename):
+            """
+            Reads a text file and creates a NumPy array from its contents.
+
+            Processes each line of the file, extracting and converting values to create a NumPy array.
+
+            Args:
+                filename (str): The path to the text file containing decay channel data.
+
+            Returns:
+                np.ndarray: A NumPy array with the processed decay channel data.
+            """
+            with open(filename, 'r') as file:
+                lines = file.readlines()
+            
+            data = [
+            [parse_value(p) for p in line.strip().split()[:8]]
+            for line in lines
+            if line.strip() and not line.startswith('#')
+            ]
+            
+            return np.array(data)
+
+        try:
+            decay_channels_path = os.path.join(self.particle_path, 'decay_channels.txt')
+            self.decay_channels = create_array_from_file(decay_channels_path)
+                
+        except FileNotFoundError:
+            raise FileNotFoundError("Decay channels file not found in the selected particle folder.")
+        except Exception as e:
+            raise Exception(f"Error importing decay channels: {e}")

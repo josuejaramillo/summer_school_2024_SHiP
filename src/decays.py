@@ -5,71 +5,8 @@ import time
 import pandas as pd
 import os
 
-"""
-This module defines decay properties for various particles and organizes them into models of Long-Lived Particles (LLPs).
-
-scalar_decays:
-    An array containing decay properties for different decay channels.
-
-        - "e+e-"    : Electron-positron decay channel.
-        - "mu+mu-"  : Muon-antimuon decay channel.
-        - "pi+pi-"  : Pion decay channel.
-        - "pi0pi0"  : Neutral pion decay channel.
-        - "k+k-"    : Kaon decay channel.
-        - "klkl"    : Long-lived kaon decay channel.
-        - "ksks"    : Short-lived kaon decay channel.
-        - "klks"    : Mixed kaon decay channel.
-        - "4pi"     : Four pion decay channel.
-        - "gg"      : Gluon decay channel.
-        - "tau+tau-": Tau-antitau decay channel.
-        - "s/s"     : Strange quark-antiquark decay channel.
-        - "c/c"     : Charm quark-antiquark decay channel.
-        - "b/b"     : Bottom quark-antiquark decay channel.
-
-        Each value is a list containing properties of the decay channel in the following order:
-        - Mass of particle 1 (GeV)
-        - Mass of particle 2 (GeV)
-        - PDG code of particle 1
-        - PDG code of particle 2
-        - Charge of particle 1
-        - Charge of particle 2
-        - Stability of particle 1 (1 indicates stable)
-        - Stability of particle 2 (1 indicates stable)
-        Note: The "4pi" channel contains properties for two sets of pion pairs.
-
-LLP_models:
-    A dictionary containing different models of Long-Lived Particles (LLPs).
-    Keys:
-        - "Higgs like scalars": Represents a model of Higgs-like scalar particles.
-    Values:
-        Each value is a array containing decay channels relevant to the model.
-        Currently, it includes:
-        - scalar_decays: The array defined above with various decay properties.
-"""
-
-scalar_decays = np.array([
-        [0.51099e-3, 0.51099e-3, 11, -11, -1, 1, 1, 1], # "e+e-"
-        [105.66e-3, 105.66e-3, 13, -13, -1, 1, 1, 1], # "mu+mu-"
-        [139.57e-3, 139.57e-3, 211, -211, 1, -1, 1, 1], # "pi+pi-"
-        [134.97e-3, 134.97e-3, 111, -111, 0, 0, 1, 1], # "pi0pi0"
-        [493.7e-3, 493.7e-3, 321, -321, 1, -1, 1, 1], # "k+k-"
-        [497.7e-3, 497.7e-3, 130, -130, 0, 0, 1, 1], # "klkl"
-        [497.7e-3, 497.7e-3, 310, -310, 0, 0, 1, 1], # "ksks"
-        [497.7e-3, 497.7e-3, 130, 310, 0, 0, 1, 1], # "klks"
-        # [139.57e-3, 139.57e-3, 211, -211, 1, -1, 0, 0, 134.97e-3, 134.97e-3, 111, -111, 0, 0, 0, 0], # "4pi"
-        [0, 0, 21, -21, 0, 0, 1, 1], # "gg"
-        [1.77686, 1.77686, 15, -15, -1, 1, 1, 1], # "tau+tau-"
-        [0.093, 0.093, 3, -3, -1/3, 1/3, 1, 1], # "s/s"
-        [1.29, 1.29, 4, -4, 2/3, -2/3, 1, 1], # "c/c"
-        [4.7, 4.7, 5, -5, -1/3, 1/3, 1, 1] # "b/b"
-    ])
-
-LLP_models = {
-    "Higgs like scalars" : scalar_decays
-}
-
 class Decays:
-    def __init__(self, m, momentum, LLP, BrRatios, timing=False):
+    def __init__(self, m, momentum, decay_channels, BrRatios, timing=False):
         """
         Initialize an instance of the class.
 
@@ -81,6 +18,7 @@ class Decays:
         m (float): The mass of the primary particle.
         momentum (array-like): The momentum of the primary particle, typically in 3D.
         LLP (str): The type of long-lived particle model to use.
+        decay_channels (array): decay channels for the selected LLP. 
         BrRatios (array): Branching ratios for the specific LLP mass.
         timing (bool, optional): Whether to time the execution of the decay product computation. Defaults to False.
 
@@ -103,8 +41,9 @@ class Decays:
         # Compute BrRatio for specific mass
         BrRatio = LLP_BrRatios(self.m, BrRatios)
         BrRatio[-6] = 0
+
         # Compute decay products
-        self.products = decay_products(self.m, self.momentum, BrRatio, LLP_models[LLP])
+        self.products = decay_products(self.m, self.momentum, BrRatio, decay_channels)
 
         #Check momentum conservation
         # momentum_3_mother = self.momentum[:,0:3]
