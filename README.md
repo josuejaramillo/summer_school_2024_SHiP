@@ -36,6 +36,10 @@
 
 2. **Prepare Input Data**:
    - Input files should be prepared and located in the appropriate directories as specified in the script (./Distributions/model).
+      - **LLP Distribution File**: Contains the LLP particle distribution data.
+      - **Maximum Energy Distribution File**: Provides the maximum energy distribution of the particles.
+      - **Branching Ratios File**: Includes data on the branching ratios for the LLP decays.
+      - **Decay Channels File**: Specifies the decay channels and associated parameters.
 
 3. **Run the Main Script**:
    - Execute `LLPsim.py` to run the simulation and analysis:
@@ -109,9 +113,9 @@ kinematics_samples.save_kinematics(LLP.particle_path)
 momentum = kinematics_samples.get_momentum()
 
 # Create an instance of the Decays class with the specified parameters
-# This step initializes the Decays object with the mass, momentum, LLP model name, Branching ratio distribution, 
+# This step initializes the Decays object with the mass, momentum, LLP decay channels, Branching ratio distribution, 
 # and optionally times the computation of decay products
-decays_products = decays.Decays(LLP.mass, momentum, LLP.LLP_name, LLP.BrRatios_distr, True)
+decays_products = decays.Decays(LLP.mass, momentum, LLP.decay_channels, LLP.BrRatios_distr, True)
 
 # Save the computed decay products to a file
 # This step writes the decay product information to a CSV file in the specified directory
