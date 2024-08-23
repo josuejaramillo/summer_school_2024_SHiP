@@ -199,6 +199,10 @@ class LLP:
         distrHNL_mu_path = os.path.join(self.particle_path, "DoubleDistrHNL-Mixing-mu.txt")
         distrHNL_tau_path = os.path.join(self.particle_path, "DoubleDistrHNL-Mixing-tau.txt")
 
+
+        energy_file_path = os.path.join(self.particle_path, "Emax_HNL.txt")
+        self.Energy_distr = pd.read_csv(energy_file_path, header=None, sep="\t")
+
         # Tuple containing all the required paths
         paths = (
             decay_json_path,
@@ -249,7 +253,7 @@ class LLP:
         self.Matrix_elements = HNLmerging.MatrixElements(Matrix_elements, decay_widths, self.MixingPatternArray)
         
         # Merge distributions using mixing pattern, yield data, and distribution data
-        self.DistrMerged = HNLmerging.merge_distributions(massDistrData, self.MixingPatternArray, yieldData, DistrDataFrames)
+        self.Distr = HNLmerging.merge_distributions(massDistrData, self.MixingPatternArray, yieldData, DistrDataFrames)
 
     def prompt_mixing_pattern(self):
         """
