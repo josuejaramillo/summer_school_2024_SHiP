@@ -14,11 +14,16 @@ pip install numpy sympy numba scipy
 
 ## File Structure
 
-- `funcs/`:
+- **funcs/**:
   - `initLLP.py`: Contains the `LLP` class which initializes the LLP object with attributes like mass, PDGs (Particle Data Group identifiers), and branching ratios.
   - `decayProducts.py`: Contains functions for simulating decays and computing decay products.
+  - `HNLmerging.py`: Contains functions for handling HNL merging processes.
+  - `PDG.py`: Contains functions or data related to Particle Data Group identifiers.
   - `rotateVectors.py`: Contains functions for rotating vectors.
-  - `main.py`: Script to run the decay simulation.
+  - `ThreeBodyDecay.py`: Contains functions for simulating three-body decays.
+  - `TwoBodyDecay.py`: Contains functions for simulating two-body decays.
+- **Main code**:
+    - `simulate.py`: Main script to run the decay simulation.
 
 ## Usage
 
