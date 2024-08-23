@@ -1,3 +1,4 @@
+```markdown
 # Decay Simulation Code
 
 ## Overview
@@ -14,7 +15,7 @@ pip install numpy sympy numba scipy
 
 ## File Structure
 
-- **funcs/**:
+- `funcs/`:
   - `initLLP.py`: Contains the `LLP` class which initializes the LLP object with attributes like mass, PDGs (Particle Data Group identifiers), and branching ratios.
   - `decayProducts.py`: Contains functions for simulating decays and computing decay products.
   - `HNLmerging.py`: Contains functions for handling HNL merging processes.
@@ -22,8 +23,11 @@ pip install numpy sympy numba scipy
   - `rotateVectors.py`: Contains functions for rotating vectors.
   - `ThreeBodyDecay.py`: Contains functions for simulating three-body decays.
   - `TwoBodyDecay.py`: Contains functions for simulating two-body decays.
-- **Main code**:
-    - `simulate.py`: Main script to run the decay simulation.
+  - `boost.py`: Contains functions for boosting decay products to the lab frame.
+  - `kinematics.py`: Contains functions for handling kinematic distributions and interpolations.
+
+- Main code:
+  - `simulate.py`: Main script to run the decay simulation.
 
 ## Usage
 
@@ -41,35 +45,82 @@ The `decayProducts.simulateDecays_rest_frame` function performs the decay simula
 
 ### Example
 
-Here's an example of how to run the simulation and measure the execution time:
+Here's an example of how to run the simulation, including initialization, interpolation, resampling, and timing:
 
 ```python
-from funcs import initLLP
-from funcs import decayProducts
+# Import necessary functions and modules
+from funcs import initLLP, decayProducts, boost, kinematics
 import time
+import numpy as np
 
-# Initialize LLP
+# Initialize the LLP (Lightest Long-Lived Particle) object
+# This object encapsulates properties like mass, PDG (Particle Data Group) identifiers, branching ratios, etc.
 LLP = initLLP.LLP()
 
-# Number of events to simulate
-nEvents = 100000
+# Define the number of events to simulate
+nEvents = 1000000
+resampleSize = 100000
+timing = False  # Set to True if you want to measure execution time for various steps
 
-# Measure the time taken to run the decay simulation for the first time
-t = time.time()
+
+# Simulate decays in the rest frame of the LLP
+# This generates decay products based on LLP properties and the specified number of events
 decayProducts.simulateDecays_rest_frame(LLP.mass, LLP.PDGs, LLP.BrRatios_distr, nEvents, LLP.Matrix_elements)
-print("Total time for first run:", time.time() - t)
 
-# Measure the time taken to run the decay simulation for the second time
-t = time.time()
-unBoostedProducts = decayProducts.simulateDecays_rest_frame(LLP.mass, LLP.PDGs, LLP.BrRatios_distr, nEvents, LLP.Matrix_elements)
-print("Total time for second run:", time.time() - t)
+
+
+# Measure the time taken for the second decay simulation run
+t = time.time()  # Start the timer
+
+# Initialize the `Grids` class for kinematic distributions
+# This setup includes distributions and parameters for the simulation
+kinematics_samples = kinematics.Grids(LLP.Distr, LLP.Energy_distr, nEvents, LLP.mass, LLP.c_tau)
+
+# Interpolate the kinematic distributions and energy data
+# This step generates interpolated values based on the provided distributions
+kinematics_samples.interpolate(timing)
+
+# Resample the data based on the interpolated distributions
+# This step selects a subset of the interpolated points for further analysis
+kinematics_samples.resample(resampleSize, timing)
+
+# Compute true kinematic samples for the simulation
+# This step calculates kinematic properties and decay probabilities for the samples
+kinematics_samples.true_samples(timing)
+
+# Retrieve the momentum data from the kinematics_samples object
+momentum = kinematics_samples.get_momentum()
+
+# Determine the number of final decay products
+finalEvents = len(momentum)
+
+# Simulate decays again to observe performance improvements (if any) due to caching or other factors
+unBoostedProducts = decayProducts.simulateDecays_rest_frame(LLP.mass, LLP.PDGs, LLP.BrRatios_distr, finalEvents, LLP.Matrix_elements)
+
+# Apply boosts to the decay products based on the momentum data
+boostedProducts = boost.tab_boosted_decay_products(LLP.mass, momentum, unBoostedProducts)
+
+# Print the elapsed time for the second run
+print("total time second time ", time.time()-t)
+
+#Save results
+
+# Save the kinematic sample data to an output file
+kinematics_samples.save_kinematics("./outputs", LLP.LLP_name)
+
+# Save the boosted decay products to an output file
+np.savetxt('./outputs/' + LLP.LLP_name + '_decayProducts.dat', boostedProducts)
+
+
 ```
 
 ### Explanation
 
 - **Initialization**: Create an LLP object using `initLLP.LLP()`, which sets up the LLP properties such as mass, PDGs, and branching ratios.
-- **Simulation**: Use `simulateDecays_rest_frame` to simulate the decay processes. This function generates the decay products and calculates their kinematic properties.
-- **Timing**: Measure the execution time for running the simulation. This can help in assessing performance and optimization.
+- **Interpolation and Resampling**: Use `kinematics.Grids` to handle distributions, interpolate values, resample the data, and compute kinematic properties.
+- **Simulation**: Use `simulateDecays_rest_frame` to simulate decay processes based on the LLP properties.
+- **Boosting**: Convert decay products to the lab frame using `boost.tab_boosted_decay_products`.
+- **Timing**: Measure and print execution times to assess performance.
 
 ## Functions
 
@@ -78,6 +129,12 @@ print("Total time for second run:", time.time() - t)
 
 - **decayProducts.simulateDecays_rest_frame**  
   Simulates decay processes for a given LLP. Takes parameters such as mass, PDGs, branching ratios, number of events, and matrix elements to compute decay products in the rest frame.
+
+- **boost.tab_boosted_decay_products**  
+  Transforms decay products from the rest frame to the lab frame.
+
+- **kinematics.Grids**  
+  Handles distribution data, performs interpolation, resampling, and calculates kinematic properties.
 
 ## Performance Optimization
 
