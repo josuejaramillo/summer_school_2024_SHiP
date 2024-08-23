@@ -1,0 +1,6 @@
+matplotlib==3.7.4
+mplhep==0.3.48
+numba==0.58.1
+numpy==1.24.3
+pandas==2.0.3
+scipy==1.14.0

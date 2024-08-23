@@ -1,149 +1,81 @@
-# LLPsim
+```markdown
+# Decay Simulation Code
 
 ## Overview
 
-`LLPsim` is a Python script designed for simulating and analyzing particle physics data. It leverages numerical and visualization techniques to analyze distributions related to LLP (Long-Lived Particles) scenarios. The script performs tasks such as kinematic sampling, distribution analysis, and 3D visualization of particle data.
+This repository contains code for simulating particle decays of a Lightest Long-Lived Particle (LLP). The simulation includes the generation of decay products in the rest frame of the LLP, calculation of kinematic properties, and optimization for performance. The code utilizes Numba for Just-In-Time (JIT) compilation to enhance speed and efficiency.
 
-## Features
+## Installation
 
-1. **Kinematic Sampling**: Generates kinematic data samples based on input distributions.
-2. **Distribution Analysis**: Analyzes and plots angular and energy distributions of particles.
-3. **3D Visualization**: Creates 3D plots of particle data and visualizes the geometry of a truncated pyramid, which represents the detector or experimental setup.
-4. **Decay Product Analysis**: Simulates and analyzes the decay products of long-lived particles, saving the results for further study.
+Ensure you have the required packages installed. You can use the following command to install the dependencies:
 
-## Components
+```bash
+pip install numpy sympy numba scipy
+```
 
-1. **`LLPsim.py`**: The main script that orchestrates the entire simulation process. It initializes the LLP scenario, performs kinematic sampling, analyzes the distributions, and generates visualizations.
+## File Structure
 
-2. **`kinematics.py`**: Contains functions for sampling and interpolating kinematic data. This includes grid-based sampling and resampling techniques.
+- `funcs/`:
+  - `initLLP.py`: Contains the `LLP` class which initializes the LLP object with attributes like mass, PDGs (Particle Data Group identifiers), and branching ratios.
+  - `decayProducts.py`: Contains functions for simulating decays and computing decay products.
+  - `rotateVectors.py`: Contains functions for rotating vectors.
+  - `main.py`: Script to run the decay simulation.
 
-3. **`decays.py`**: Simulates the decay of long-lived particles into various final states, providing detailed information about the decay poducts.
+## Usage
 
-4. **`crosscheck.py`**: Provides the `DistributionAnalyzer` class for analyzing and plotting angular and energy distributions based on the sampled kinematic data.
+### Initialization
 
-5. **`vertex_graph.py`**: Contains code for visualizing a truncated pyramid and scatter plotting particle data in a 3D space.
+Initialize LLP:
 
+The `initLLP.LLP()` function initializes an LLP object with properties needed for the simulation.
 
+### Simulation
 
-## How to Use
+Simulate Decays:
 
-1. **Set Up Environment**:
-   - Ensure you have Python 3.8.0 installed.
-   - Install required packages using:
-     ```bash
-     pip install -r requirements.txt
-     ```
+The `decayProducts.simulateDecays_rest_frame` function performs the decay simulation. It uses parameters from the LLP object and generates decay products.
 
-2. **Prepare Input Data**:
-   - Input files should be prepared and located in the appropriate directories as specified in the script (./Distributions/model).
-      - **LLP Distribution File**: Contains the LLP particle distribution data.
-      - **Maximum Energy Distribution File**: Provides the maximum energy distribution of the particles.
-      - **Branching Ratios File**: Includes data on the branching ratios for the LLP decays.
-      - **Decay Channels File**: Specifies the decay channels and associated parameters.
+### Example
 
-3. **Run the Main Script**:
-   - Execute `LLPsim.py` to run the simulation and analysis:
-     ```bash
-     python LLPsim.py
-     ```
-
-   - The script will:
-     - Initialize the LLP particle scenario.
-     - Generate kinematic samples.
-     - Analyze the angular and energy distributions.
-     - Create and save plots for both distributions and 3D visualizations.
-
-4. **Simulate Decay Products**:
-   - Use `decays.py` to simulate decay products for long-lived particles:
-
-   - This script will:
-     - Initialize the decay simulation with given parameters.
-     - Compute the decay products.
-     - Save the decay product information to a CSV file.
-
-5. **View Results**:
-   - Distribution plots will be saved in the specified directory.
-   - 3D visualization will also be saved and can be viewed using image viewers.
-   - LLP decays vertices and decay product details will be saved in a CSV file within the specified directory.
-
-## Example Usage
-
-Here is an example snippet of how the `LLPsim.py` script might be used:
+Here's an example of how to run the simulation and measure the execution time:
 
 ```python
-from src import init
-from src import kinematics
-from src import crosscheck
-from src import vertex_graph
-from src import decays
+from funcs import initLLP
+from funcs import decayProducts
+import time
 
-# ........................Sampling........................
+# Initialize LLP
+LLP = initLLP.LLP()
 
+# Number of events to simulate
+nEvents = 100000
 
-# Initialize LLP selection and set mass and lifetime (c*tau)
-LLP = init.LLP()
+# Measure the time taken to run the decay simulation for the first time
+t = time.time()
+decayProducts.simulateDecays_rest_frame(LLP.mass, LLP.PDGs, LLP.BrRatios_distr, nEvents, LLP.Matrix_elements)
+print("Total time for first run:", time.time() - t)
 
-# Input parameters
-nPoints = 1000000  # Number of random points for interpolation
-mass = LLP.mass      # Mass of the selected LLP
-c_tau = LLP.c_tau    # Lifetime c*tau of the LLP
-resampleSize = 100000  # Size of the resampled subset
-timing = True        # Flag to enable execution time measurement
+# Measure the time taken to run the decay simulation for the second time
+t = time.time()
+unBoostedProducts = decayProducts.simulateDecays_rest_frame(LLP.mass, LLP.PDGs, LLP.BrRatios_distr, nEvents, LLP.Matrix_elements)
+print("Total time for second run:", time.time() - t)
+```
 
-# Initialize the `grids` class with distributions and parameters
-kinematics_samples = kinematics.Grids(LLP.Distr, LLP.Energy_distr, nPoints, mass, c_tau)
+### Explanation
 
-# Perform interpolation on the data
-# This step calculates interpolated values for distribution and energy
-kinematics_samples.interpolate(timing)
+- **Initialization**: Create an LLP object using `initLLP.LLP()`, which sets up the LLP properties such as mass, PDGs, and branching ratios.
+- **Simulation**: Use `simulateDecays_rest_frame` to simulate the decay processes. This function generates the decay products and calculates their kinematic properties.
+- **Timing**: Measure the execution time for running the simulation. This can help in assessing performance and optimization.
 
-# Perform resampling based on the interpolated values
-# This step selects a subset of points based on the interpolated distribution
-kinematics_samples.resample(resampleSize, timing)
+## Functions
 
-# Compute true kinematic samples
-# This step calculates kinematic properties and decay probabilities for the samples
-kinematics_samples.true_samples(timing)
+- **initLLP.LLP()**  
+  Initializes an LLP object with parameters including mass, PDGs, branching ratios, and matrix elements.
 
-# Save the kinematic properties to a file
-# This step writes the calculated kinematic properties to a CSV file
-kinematics_samples.save_kinematics(LLP.particle_path)
+- **decayProducts.simulateDecays_rest_frame**  
+  Simulates decay processes for a given LLP. Takes parameters such as mass, PDGs, branching ratios, number of events, and matrix elements to compute decay products in the rest frame.
 
-# Retrieve the momentum data from the kinematics_samples object
-momentum = kinematics_samples.get_momentum()
+## Performance Optimization
 
-# Create an instance of the Decays class with the specified parameters
-# This step initializes the Decays object with the mass, momentum, LLP decay channels, Branching ratio distribution, 
-# and optionally times the computation of decay products
-decays_products = decays.Decays(LLP.mass, momentum, LLP.decay_channels, LLP.BrRatios_distr, True)
-
-# Save the computed decay products to a file
-# This step writes the decay product information to a CSV file in the specified directory
-decays_products.save_decay_products(LLP.particle_path)
-
-# ........................Crosscheck........................
-
-samples_analysis = crosscheck.DistributionAnalyzer(
-    LLP.Distr,  # Distribution data for 3D interpolation
-    LLP.Energy_distr,  # Energy distribution data for 2D interpolation
-    LLP.mass,  # Mass value used in analysis
-    kinematics_samples.get_energy(),  # Array of energy values from kinematics_samples
-    kinematics_samples.get_theta(),  # Array of theta (angle) values from kinematics_samples
-    LLP.LLP_name,  # Name of the LLP particle (used in plot titles)
-    LLP.particle_path  # Path where output files will be saved
-)
-
-# Perform analysis and plotting of angular distribution
-# This function calculates the normalized angular distribution and plots it.
-
-samples_analysis.crosscheck("angle")
-
-# Perform analysis and plotting of energy distribution
-# This function calculates the normalized energy distribution and plots it.
-
-samples_analysis.crosscheck("energy")
-
-# ........................Vertex graph........................
-
-vertex_graph.plot3D(LLP.particle_path)
-
+The code uses Numba's JIT compilation to improve performance, particularly for the numerical functions involved in the simulations. Running the simulation multiple times may show improved performance due to optimizations and caching effects.
+```
