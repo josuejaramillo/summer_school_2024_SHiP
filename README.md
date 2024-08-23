@@ -1,4 +1,3 @@
-```markdown
 # Decay Simulation Code
 
 ## Overview
