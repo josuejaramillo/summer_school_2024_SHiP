@@ -139,3 +139,33 @@ np.savetxt('./outputs/' + LLP.LLP_name + '_decayProducts.dat', boostedProducts)
 
 The code uses Numba's JIT compilation to improve performance, particularly for the numerical functions involved in the simulations. Running the simulation multiple times may show improved performance due to optimizations and caching effects.
 ```
+
+
+## Results
+
+**Kinematic Sampling Results**
+
+The results for the kinematic sampling are saved in a .dat file called {LLP_name}_kinematic_sampling.dat. Each column in the file represents the following kinematic quantities:
+
+- **theta**: The polar angle (θ) of the particle.
+- **energy**: The energy of the particle.
+- **px**: The x-component of the particle's momentum.
+- **py**: The y-component of the particle's momentum.
+- **pz**: The z-component of the particle's momentum.
+- **P**: The magnitude of the particle's momentum.
+- **x**: The x-coordinate of the particle's position.
+- **y**: The y-coordinate of the particle's position.
+- **z**: The z-coordinate of the particle's position.
+- **r**: The radial distance from the origin to the particle's position, calculated as √(x² + y² + z²).
+- **P_decay**: The decay momentum of the particle.
+
+**Decay Products Results**
+
+The decay products are saved in a .dat file with the name format:
+
+{LLP_name}_{str(mass)}_{MixingPatternArray[0]}_{MixingPatternArray[1]}_{MixingPatternArray[2]}_{c_tau}_decayProducts.dat
+
+Columns
+- **px1, py1, pz1, e1, MASS1, pdg1, charge1, stability1**: Properties of the first decay product.
+- **px2, py2, pz2, e2, MASS2, pdg2, charge2, stability2**: Properties of the second decay product.
+- **px3, py3, pz3, e3, MASS3, pdg3, charge3, stability3**: Properties of the third decay product.
