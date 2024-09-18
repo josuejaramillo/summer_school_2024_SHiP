@@ -163,7 +163,7 @@ The results for the kinematic sampling are saved in a .dat file called {LLP_name
 
 The decay products are saved in a .dat file with the name format:
 
-{LLP_name}_{str(mass)}_{MixingPatternArray[0]}_{MixingPatternArray[1]}_{MixingPatternArray[2]}_{c_tau}_decayProducts.dat
+{LLP_name}\_{str(mass)}\_{MixingPatternArray[0]}_{MixingPatternArray[1]}_{MixingPatternArray[2]}_{c_tau}_decayProducts.dat
 
 Columns
 - **px1, py1, pz1, e1, MASS1, pdg1, charge1, stability1**: Properties of the first decay product.
