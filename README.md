@@ -167,11 +167,9 @@ LLP_name\_str(mass)\_MixingPatternArray[0]\_MixingPatternArray[1]\_MixingPattern
 
 The file is separated by process and sample points, indicated as:
 
-#<process={channel}; sample_points={channel_size}
+#<process=GenericProcess; sample_points=N>
 
 Columns
 - **px1, py1, pz1, e1, MASS1, pdg1, charge1, stability1**: Properties of the first decay product.
 - **px2, py2, pz2, e2, MASS2, pdg2, charge2, stability2**: Properties of the second decay product.
 - **px3, py3, pz3, e3, MASS3, pdg3, charge3, stability3**: Properties of the third decay product.
-
-The 
