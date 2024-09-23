@@ -144,7 +144,7 @@ def boosted_nbody_from_decays_comp(tablemother, tabledaughters):
         daughterElab = E_prod_lab(motherE, mmother, motherpx, motherpy, motherpz, daughterErest, daughterpxrest, daughterpyrest, daughterpzrest)
         daughterpxlab, daughterpylab, daughterpzlab = pvec_prod_lab(motherE, mmother, motherpx, motherpy, motherpz, daughterErest, daughterpxrest, daughterpyrest, daughterpzrest)
 
-        boosted_daughters[i] = np.array([daughterpxlab, daughterpylab, daughterpzlab, daughterElab, mmother, daughter[indexpdg1], daughter[indexcharge1], daughter[indexstability1]])
+        boosted_daughters[i] = np.array([daughterpxlab, daughterpylab, daughterpzlab, daughterElab, daughter[indexm1], daughter[indexpdg1], daughter[indexcharge1], daughter[indexstability1]])
 
     return boosted_daughters
 
@@ -162,7 +162,7 @@ def tab_boosted_decay_products(m, momentum, tabledaughters):
         np.ndarray: Array of boosted decay products for all events.
     """
     products = np.empty((len(momentum), 24), dtype=np.float64)
-    
+
     for i in nb.prange(len(momentum)):
         px, py, pz, E = momentum[i]
 
@@ -172,5 +172,40 @@ def tab_boosted_decay_products(m, momentum, tabledaughters):
 
         # Extract kinematic properties for the two decay products
         products[i] = r.flatten()
-
     return products
+
+def saveProducts(boostedProducts, LLP_name, mass, MixingPatternArray, c_tau, decayChannels, size_per_channel):
+    
+    if any(MixingPatternArray) == None:
+        outputfileName = f'./outputs/{LLP_name}_{str(mass )}_{c_tau}_decayProducts.dat'
+    else:
+        outputfileName = f'./outputs/{LLP_name}_{str(mass )}_{round(MixingPatternArray[0], 2)}_{round(MixingPatternArray[1],2)}_{round(MixingPatternArray[2],2)}_{c_tau}_decayProducts.dat'
+
+    with open(outputfileName, 'w') as f:
+        start_row = 0  # Initialize the starting row index
+        for i, channel in enumerate(decayChannels):
+            channel_size = size_per_channel[i]
+
+            # Skip channels with size 0
+            if channel_size == 0:
+                continue
+
+            end_row = start_row + channel_size
+            data = boostedProducts[start_row:end_row, :]  # Extract the relevant rows
+            
+            # Write the header
+            f.write(f"#<process={channel}; sample_points={channel_size}>\n\n")
+            
+            # Write the data
+            for row in data:
+                row_str = ' '.join(map(str, row))
+                f.write(f"{row_str}\n")
+            
+            # Add a blank line between channels
+            f.write("\n")
+            
+            # Update the starting row index for the next channel
+            start_row = end_row
+
+    # np.savetxt(f'./outputs/{LLP_name}_{str(mass )}_{MixingPatternArray[0]}_{MixingPatternArray[1]}_{MixingPatternArray[2]}_decayProducts.dat', boostedProducts)
+

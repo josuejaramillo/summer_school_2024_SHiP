@@ -70,6 +70,7 @@ def simulateDecays_rest_frame(mass, PDGdecay, BrRatio, size, Msquared3BodyLLP):
     --------
     np.ndarray
         A 2D array containing the simulated decay products for all events.
+        A 1D array containing the size per channel
     """
     # Helper function to retrieve the mass, charge, and stability of particles based on their PDG codes
     def get_particle_properties(pdg_list):
@@ -98,7 +99,9 @@ def simulateDecays_rest_frame(mass, PDGdecay, BrRatio, size, Msquared3BodyLLP):
                     mass, size_per_channel[i], masses[0], masses[1], pdg1, pdg2, charges[0], charges[1], stabilities[0], stabilities[1]
                 )
                 # Concatenate the results with an additional array of zeros to match the expected output shape
-                results[i] = np.concatenate((decay_results, np.zeros((len(decay_results), 8))), axis=1)
+                zeros_array = np.zeros((len(decay_results), 8))
+                zeros_array[:, 5] = -999 
+                results[i] = np.concatenate((decay_results, zeros_array), axis=1)
 
         elif len(pdg_list) == 3:
             # Three-body decay case
@@ -116,6 +119,8 @@ def simulateDecays_rest_frame(mass, PDGdecay, BrRatio, size, Msquared3BodyLLP):
             # Simulate decays only if there are events assigned to this channel
             if size_per_channel[i] > 0:
                 results[i] = ThreeBodyDecay.decay_products(mass, size_per_channel[i], specific_decay_params)
+        # elif len(pdg_list) == 4:
+        #     print("4-body decay")
 
     # Convert results to a numpy array of objects
     results = np.array(results, dtype=object)
@@ -126,5 +131,4 @@ def simulateDecays_rest_frame(mass, PDGdecay, BrRatio, size, Msquared3BodyLLP):
         for item in results if item is not None 
         for sub_item in (item if isinstance(item, list) else [item])
     ])
-
-    return final_array
+    return (final_array, size_per_channel)

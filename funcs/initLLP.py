@@ -64,6 +64,7 @@ class LLP:
         """
         self.main_folder = "./Distributions"  # Directory containing particle distribution data
         self.LLP_name = ""  # Placeholder for LLP name
+        self.MixingPatternArray = None
         self.Matrix_elements = None  # Placeholder for matrix elements
 
         # Initialize particle selection and mass/lifetime prompts
@@ -135,27 +136,48 @@ class LLP:
         Imports scalar particle data and distributions.
         Loads distribution, energy, and branching ratio data from respective files.
         """
-        # List all files in the particle folder
-        files = os.listdir(self.particle_path)
+        # # List all files in the particle folder
+        # files = os.listdir(self.particle_path)
         
-        # Identify relevant files by their prefixes (D for distribution, E for energy, BrR for branching ratios)
-        distribution_file = next(f for f in files if f.startswith('D'))
-        energy_file = next(f for f in files if f.startswith('E'))
-        BrRatios_file = next(f for f in files if f.startswith('BrR'))
+        # # Identify relevant files by their prefixes (D for distribution, E for energy, BrR for branching ratios)
+        # distribution_file = next(f for f in files if f.startswith('D'))
+        # energy_file = next(f for f in files if f.startswith('E'))
+        # BrRatios_file = next(f for f in files if f.startswith('BrR'))
 
-        # Construct full paths to the identified files
-        distribution_file_path = os.path.join(self.particle_path, distribution_file)
-        energy_file_path = os.path.join(self.particle_path, energy_file)
-        BrRatios_file_path = os.path.join(self.particle_path, BrRatios_file)
+        # # Construct full paths to the identified files
+        # distribution_file_path = os.path.join(self.particle_path, distribution_file)
+        # energy_file_path = os.path.join(self.particle_path, energy_file)
+        # BrRatios_file_path = os.path.join(self.particle_path, BrRatios_file)
+
+        # # Load data into pandas DataFrames
+        # self.Distr = pd.read_csv(distribution_file_path, header=None, sep="\t")
+        # self.Energy_distr = pd.read_csv(energy_file_path, header=None, sep="\t")
+        
+        # # Interpolate branching ratios at the given mass
+        # self.BrRatios_distr = self.LLP_BrRatios(self.mass, pd.read_csv(BrRatios_file_path, header=None, sep="\t"))
+
+        # self.import_decay_channels()  # Import decay channel data
+
+        distribution_file_path = os.path.join(self.particle_path, "Double-Distr-BC4.dat")
+        decay_json_path = os.path.join(self.particle_path, "HLS-decay.json")
+        energy_file_path = os.path.join(self.particle_path, "Emax-BC4.dat")
 
         # Load data into pandas DataFrames
         self.Distr = pd.read_csv(distribution_file_path, header=None, sep="\t")
         self.Energy_distr = pd.read_csv(energy_file_path, header=None, sep="\t")
-        
-        # Interpolate branching ratios at the given mass
-        self.BrRatios_distr = self.LLP_BrRatios(self.mass, pd.read_csv(BrRatios_file_path, header=None, sep="\t"))
 
-        self.import_decay_channels()  # Import decay channel data
+        # Load decay data from JSON file
+        HLS_decay = pd.read_json(decay_json_path)
+
+        # Extract decay channels and particle PDGs (Particle Data Group IDs)
+        self.decayChannels = HLS_decay.iloc[:, 0].to_numpy()
+        self.PDGs = HLS_decay.iloc[:, 1].apply(np.array).to_numpy()
+
+        # Interpolate branching ratios at the given mass
+        BrRatios = np.array(HLS_decay.iloc[:, 2])
+
+        self.BrRatios_distr = self.LLP_BrRatios(self.mass, BrRatios)
+
 
     def LLP_BrRatios(self, m, LLP_BrRatios):
         """
@@ -173,14 +195,23 @@ class LLP:
         np.ndarray
             Interpolated branching ratios at the specified mass.
         """
-        mass_axis = LLP_BrRatios[0]  # Extract mass axis from the first column
-        channels = LLP_BrRatios.columns[1:]  # Get the branching ratio channels (columns)
-        
+        # mass_axis = LLP_BrRatios[0]  # Extract mass axis from the first column
+        # channels = LLP_BrRatios.columns[1:]  # Get the branching ratio channels (columns)
+
+
         # Create interpolators for each channel
-        interpolators = np.asarray([RegularGridInterpolator((mass_axis,), LLP_BrRatios[channel].values) for channel in channels])
+        # interpolators = np.asarray([RegularGridInterpolator((mass_axis,), LLP_BrRatios[channel].values) for channel in channels])
         
         # Evaluate interpolators at the specified mass
+        # return np.array([interpolator([m])[0] for interpolator in interpolators])
+
+
+        mass_axis = np.array(LLP_BrRatios[0])[:,0]
+
+        # Create interpolators for each channel
+        interpolators = np.asarray([RegularGridInterpolator((mass_axis,), np.array(LLP_BrRatios[i])[:,1]) for i in range(len(LLP_BrRatios))])        
         return np.array([interpolator([m])[0] for interpolator in interpolators])
+        
 
     def import_HNL(self):
         """

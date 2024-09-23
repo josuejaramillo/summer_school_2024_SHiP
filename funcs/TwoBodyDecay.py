@@ -104,5 +104,4 @@ def decay_products(m, size, m1, m2, pdg1, pdg2, charge1, charge2, stability1, st
         # Simulate the decay and extract the kinematic properties for the two decay products
         r = simulate_decays(m, m1, m2, pdg1, pdg2, charge1, charge2, stability1, stability2)
         products[i] = r.flatten()  # Flatten and store the results
-
     return products

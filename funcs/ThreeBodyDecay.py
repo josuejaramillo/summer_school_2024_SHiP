@@ -294,5 +294,5 @@ def decay_products(MASSM, Nevents, SpecificDecay):
     # Compute the momentum components and particle properties for each event
     result = np.array([tabPS3bodyCompiled(e, MASSM, MASS1, MASS2, MASS3, pdg1, pdg2, pdg3, charge1, charge2, charge3, stability1, stability2, stability3)
                        for e in tabE1E3true])
-
+    
     return result

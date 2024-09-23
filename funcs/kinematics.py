@@ -203,25 +203,42 @@ class Grids:
         # Mask for particles decaying inside the volume
         mask = (-x_max(z) < x) & (x < x_max(z)) & (-y_max(z) < y) & (y < y_max(z)) & (32 < z) & (z < 82)
 
+        # self.kinematics_dic = {
+        #     "theta": self.r_theta[mask],
+        #     "energy": self.r_energy[mask],
+        #     "px": px[mask],
+        #     "py": py[mask],
+        #     "pz": pz[mask],
+        #     "P": momentum[mask],
+        #     "x": x[mask],
+        #     "y": y[mask],
+        #     "z": z[mask],
+        #     "r": np.sqrt(x[mask]**2 + y[mask]**2 + z[mask]**2),
+        #     "P_decay": P_decay[mask]
+        # }
         self.kinematics_dic = {
-            "theta": self.r_theta[mask],
-            "energy": self.r_energy[mask],
             "px": px[mask],
             "py": py[mask],
             "pz": pz[mask],
-            "P": momentum[mask],
+            "energy": self.r_energy[mask],
+            "m": self.m*np.ones_like(px[mask]),
+            "PDG":12345678*np.ones_like(px[mask]),
+            "P_decay": P_decay[mask],
             "x": x[mask],
             "y": y[mask],
-            "z": z[mask],
-            "r": np.sqrt(x[mask]**2 + y[mask]**2 + z[mask]**2),
-            "P_decay": P_decay[mask]
+            "z": z[mask]
         }
-
+        
         if timing:
             print(f"Sampling vertices t = {time.time() - t} s")
         
         self.momentum = np.column_stack((px[mask], py[mask], pz[mask], self.r_energy[mask]))
 
+    def get_kinematics(self):
+        dic = self.kinematics_dic
+        kinematics = np.column_stack(list(dic.values()))
+        return kinematics
+    
     def save_kinematics(self, path, name):
         """
         Save the kinematic properties to a CSV file.
@@ -232,7 +249,7 @@ class Grids:
             Directory path to save the kinematics file.
         """
         kinetics_df = pd.DataFrame(self.kinematics_dic)
-        kinetics_df.to_csv(path + "/" + name +"_kinetic_sampling.dat", sep="\t", index=False)
+        kinetics_df.to_csv(path + "/" + name +"_kinematics_sampling.dat", sep="\t", index=False)
 
     def get_energy(self):
         """
