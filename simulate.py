@@ -1,5 +1,5 @@
 # Import necessary functions and modules
-from funcs import initLLP, decayProducts, boost, kinematics
+from funcs import initLLP, decayProducts, boost, kinematics, mergeResults
 import time
 import numpy as np
 
@@ -15,8 +15,7 @@ timing = False  # Set to True if you want to measure execution time for various 
 
 # Simulate decays in the rest frame of the LLP
 # This generates decay products based on LLP properties and the specified number of events
-decayProducts.simulateDecays_rest_frame(LLP.mass, LLP.PDGs, LLP.BrRatios_distr, nEvents, LLP.Matrix_elements)
-
+compile = decayProducts.simulateDecays_rest_frame(LLP.mass, LLP.PDGs, LLP.BrRatios_distr, nEvents, LLP.Matrix_elements)
 
 # Measure the time taken for the second decay simulation run
 t = time.time()  # Start the timer
@@ -43,8 +42,8 @@ momentum = kinematics_samples.get_momentum()
 # Determine the number of final decay products
 finalEvents = len(momentum)
 
-# Simulate decays again to observe performance improvements (if any) due to caching or other factors
-unBoostedProducts = decayProducts.simulateDecays_rest_frame(LLP.mass, LLP.PDGs, LLP.BrRatios_distr, finalEvents, LLP.Matrix_elements)
+# Simulate decays again to observe performance improvements
+unBoostedProducts, size_per_channel = decayProducts.simulateDecays_rest_frame(LLP.mass, LLP.PDGs, LLP.BrRatios_distr, finalEvents, LLP.Matrix_elements)
 
 # Apply boosts to the decay products based on the momentum data
 boostedProducts = boost.tab_boosted_decay_products(LLP.mass, momentum, unBoostedProducts)
@@ -54,8 +53,15 @@ print("total time second time ", time.time()-t)
 
 #Save results
 
+motherParticleResults = kinematics_samples.get_kinematics() #Get kinematics as an array
+decayProductsResults = boostedProducts
+
 # Save the kinematic sample data to an output file
-kinematics_samples.save_kinematics("./outputs", LLP.LLP_name)
+# kinematics_samples.save_kinematics("./outputs", LLP.LLP_name)
 
 # Save the boosted decay products to an output file
-np.savetxt('./outputs/' + LLP.LLP_name + '_decayProducts.dat', boostedProducts)
+# boost.saveProducts(boostedProducts, LLP.LLP_name, LLP.mass, LLP.MixingPatternArray, LLP.c_tau, LLP.decayChannels, size_per_channel)
+
+# Merge results
+mergeResults.save(motherParticleResults, decayProductsResults, LLP.LLP_name, LLP.mass, LLP.MixingPatternArray, LLP.c_tau, LLP.decayChannels, size_per_channel)
+
