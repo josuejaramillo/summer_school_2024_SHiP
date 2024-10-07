@@ -1,4 +1,4 @@
-from . import TwoBodyDecay, ThreeBodyDecay
+from . import TwoBodyDecay, ThreeBodyDecay, FourBodyDecay
 from . import PDG
 import numpy as np
 import time
@@ -93,14 +93,17 @@ def simulateDecays_rest_frame(mass, PDGdecay, BrRatio, size, Msquared3BodyLLP):
             pdg1, pdg2 = pdg_list
             masses, charges, stabilities = get_particle_properties([pdg1, pdg2])
 
+            
+            
             # Simulate decays only if there are events assigned to this channel
             if size_per_channel[i] > 0:
                 decay_results = TwoBodyDecay.decay_products(
                     mass, size_per_channel[i], masses[0], masses[1], pdg1, pdg2, charges[0], charges[1], stabilities[0], stabilities[1]
                 )
-                # Concatenate the results with an additional array of zeros to match the expected output shape
-                zeros_array = np.zeros((len(decay_results), 8))
+                zeros_array = np.zeros((len(decay_results), 16))
                 zeros_array[:, 5] = -999 
+                zeros_array[:, 13] = -999 
+                # Concatenate the results with an additional array of zeros to match the expected output shape
                 results[i] = np.concatenate((decay_results, zeros_array), axis=1)
 
         elif len(pdg_list) == 3:
@@ -116,11 +119,31 @@ def simulateDecays_rest_frame(mass, PDGdecay, BrRatio, size, Msquared3BodyLLP):
                 Msquared3BodyLLP[i]
             )
 
+            
             # Simulate decays only if there are events assigned to this channel
             if size_per_channel[i] > 0:
-                results[i] = ThreeBodyDecay.decay_products(mass, size_per_channel[i], specific_decay_params)
-        # elif len(pdg_list) == 4:
-        #     print("4-body decay")
+                decay_results = ThreeBodyDecay.decay_products(mass, size_per_channel[i], specific_decay_params)
+                # Concatenate the results with an additional array of zeros to match the expected output shape
+                zeros_array = np.zeros((len(decay_results), 8))
+                zeros_array[:, 5] = -999 
+                results[i] = np.concatenate((decay_results, zeros_array), axis=1)
+
+        elif len(pdg_list) == 4:
+            # Four-body decay case
+            pdg1, pdg2, pdg3, pdg4 = pdg_list
+            masses, charges, stabilities = get_particle_properties([pdg1, pdg2, pdg3, pdg4])
+
+            # Parameters needed for four-body decay simulation
+            specific_decay_params = (
+                pdg1, pdg2, pdg3, pdg4, 
+                masses[0], masses[1], masses[2], masses[3], 
+                charges[0], charges[1], charges[2], charges[3], 
+                stabilities[0], stabilities[1], stabilities[2], stabilities[3]
+            )
+
+            if size_per_channel[i] > 0:
+                results[i] = FourBodyDecay.decay_products(mass, specific_decay_params, size_per_channel[i])
+
 
     # Convert results to a numpy array of objects
     results = np.array(results, dtype=object)
