@@ -38,9 +38,13 @@ Also, [pythia8](https://pythia.org/) must be installed with python config. When 
 
 `./configure --with-python-config=python3-config`
 
+After `make`, the lib folder has to contain the `pythia8.so` file.
+
 Once this is done, the lib path has to be specified in the script `funcs/decayProducts.py`. Currently, it is
 
 `sys.path.insert(0, '/home/name/Downloads/pythia8312/lib')`
+
+
 
 ## File Structure
 
