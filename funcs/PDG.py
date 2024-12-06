@@ -5,6 +5,9 @@ particle_db = {
     -11: [0.000511, +1, 1], # Positron (antiparticle of electron)
     13: [0.1057, -1, 1],    # Muon
     -13: [0.1057, +1, 1],   # Anti-muon
+    15: [1.776, -1, 1],     # Tau
+    -15: [1.776, +1, 1],    # Anti-tau
+    22: [0.00, 0, 1],  # Photon
     211: [0.1396, +1, 1],   # Charged pion (π+)
     -211: [0.1396, -1, 1],  # Charged pion (π-)
     111: [0.134, 0, 1],     # Neutral pion (π0)
@@ -15,8 +18,6 @@ particle_db = {
     -130: [0.4976, 0, 0],   # Antineutral kaon (K0-bar) - Long-lived
     310: [0.4976, 0, 1],    # Neutral kaon (K0_S) - Short-lived
     -310: [0.4976, 0, 1],   # Antineutral kaon (K0-bar) - Short-lived
-    15: [1.776, -1, 1],     # Tau
-    -15: [1.776, +1, 1],    # Anti-tau
     2: [0.0022, +2/3, 1],   # Up quark
     -2: [0.0022, -2/3, 1],  # Anti-up quark
     1: [0.0047, -1/3, 1],   # Down quark
@@ -38,7 +39,7 @@ particle_db = {
     331: [0.9578, 0, 1],    # η′(958) meson
     221: [0.5479, 0, 1],    # η meson
     333: [1.019, 0, 1],     # φ(1020) meson
-
+    20113: [1.230, 0, 0],   # a1(1260) meson
     # Neutrinos
     12: [0, 0, 1],          # Electron neutrino (νe)
     -12: [0, 0, 1],         # Electron anti-neutrino (ν̅e)
@@ -46,7 +47,6 @@ particle_db = {
     -14: [0, 0, 1],         # Muon anti-neutrino (ν̅μ)
     16: [0, 0, 1],          # Tau neutrino (ντ)
     -16: [0, 0, 1],         # Tau anti-neutrino (ν̅τ)
-    20113: [1.230, 0, 0],   # a1(1260) meson
 }
 
 def get_particle_properties(pdg_code):

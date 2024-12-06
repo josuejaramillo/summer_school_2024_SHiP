@@ -1,67 +1,239 @@
-# Import necessary functions and modules
+# main.py
+import matplotlib.pyplot as plt
+import sys
+import os
 from funcs import initLLP, decayProducts, boost, kinematics, mergeResults
 import time
 import numpy as np
 
-# Initialize the LLP (Lightest Long-Lived Particle) object
-# This object encapsulates properties like mass, PDG (Particle Data Group) identifiers, branching ratios, etc.
-LLP = initLLP.LLP()
-
 # Define the number of events to simulate
-nEvents = 1000000
-resampleSize = 100000
-timing = False  # Set to True if you want to measure execution time for various steps
+try:
+    resampleSize = int(input("\nEnter the number of events to simulate: "))
+    if resampleSize <= 0:
+        raise ValueError("The number of events must be a positive integer.")
+except ValueError as e:
+    raise ValueError(f"Invalid input for the number of events: {e}")
+nEvents = resampleSize * 10  # Integer multiplication for clarity
 
+# Define N_pot (number of protons on target)
+N_pot = 6e20
 
-# Simulate decays in the rest frame of the LLP
-# This generates decay products based on LLP properties and the specified number of events
-compile = decayProducts.simulateDecays_rest_frame(LLP.mass, LLP.PDGs, LLP.BrRatios_distr, nEvents, LLP.Matrix_elements)
+def select_particle():
+    main_folder = "./Distributions"
+    folders = np.array(os.listdir(main_folder))
+                
+    print("\nParticle Selector\n")
+    for i, folder in enumerate(folders):
+        print(f"{i + 1}. {folder}")
 
-# Measure the time taken for the second decay simulation run
-t = time.time()  # Start the timer
+    try:
+        selected_particle = int(input("Select particle: ")) - 1
+        particle_distr_folder = folders[selected_particle]
+    except (IndexError, ValueError):
+        raise ValueError("Invalid selection. Please select a valid particle.")
 
-# Initialize the `Grids` class for kinematic distributions
-# This setup includes distributions and parameters for the simulation
-kinematics_samples = kinematics.Grids(LLP.Distr, LLP.Energy_distr, nEvents, LLP.mass, LLP.c_tau)
+    particle_path = os.path.join(main_folder, particle_distr_folder)
+    LLP_name = particle_distr_folder.replace("_", " ")
 
-# Interpolate the kinematic distributions and energy data
-# This step generates interpolated values based on the provided distributions
-kinematics_samples.interpolate(timing)
+    return {'particle_path': particle_path, 'LLP_name': LLP_name}
 
-# Resample the data based on the interpolated distributions
-# This step selects a subset of the interpolated points for further analysis
-kinematics_samples.resample(resampleSize, timing)
+def prompt_uncertainty():
+    print("\nWhich variation of the dark photon flux within the uncertainty to select?")
+    print("1. lower")
+    print("2. central")
+    print("3. upper")
 
-# Compute true kinematic samples for the simulation
-# This step calculates kinematic properties and decay probabilities for the samples
-kinematics_samples.true_samples(timing)
+    try:
+        selected_uncertainty = int(input("Select uncertainty level (1-3): "))
+        if selected_uncertainty == 1:
+            uncertainty = "lower"
+        elif selected_uncertainty == 2:
+            uncertainty = "central"
+        elif selected_uncertainty == 3:
+            uncertainty = "upper"
+        else:
+            raise ValueError("Invalid selection.")
+    except ValueError as e:
+        raise ValueError(f"Invalid input for uncertainty level: {e}")
+    return uncertainty
 
-# Retrieve the momentum data from the kinematics_samples object
-momentum = kinematics_samples.get_momentum()
+def prompt_mixing_pattern():
+    try:
+        mixing_input = input("\nEnter xi_e, xi_mu, xi_tau: (Ue2, Umu2, Utau2) = U2(xi_e,xi_mu,xi_tau), summing to 1, separated by spaces: ").strip().split()
+        if len(mixing_input) != 3:
+            raise ValueError("Please enter exactly three numerical values separated by spaces.")
+        
+        Ue2, Umu2, Utau2 = map(float, mixing_input)
 
-# Determine the number of final decay products
-finalEvents = len(momentum)
+        MixingPatternArray = np.array([Ue2, Umu2, Utau2])
+        sumMixingPattern = Ue2 + Umu2 + Utau2
+        if sumMixingPattern != 1:
+            Ue2 /= sumMixingPattern
+            Umu2 /= sumMixingPattern
+            Utau2 /= sumMixingPattern
+            MixingPatternArray = np.array([Ue2, Umu2, Utau2])
 
-# Simulate decays again to observe performance improvements
-unBoostedProducts, size_per_channel = decayProducts.simulateDecays_rest_frame(LLP.mass, LLP.PDGs, LLP.BrRatios_distr, finalEvents, LLP.Matrix_elements)
+        return MixingPatternArray
 
-# Apply boosts to the decay products based on the momentum data
-boostedProducts = boost.tab_boosted_decay_products(LLP.mass, momentum, unBoostedProducts)
+    except ValueError as e:
+        raise ValueError(f"Invalid input. Please enter three numerical values separated by spaces: {e}")
 
-# Print the elapsed time for the second run
-print("total time second time ", time.time()-t)
+def prompt_masses_and_c_taus():
+    """
+    Prompts the user for masses of LLPs and their lifetimes (c*tau).
+    If `ifSameLifetimes` is True, the same list of lifetimes will be used for all masses.
+    Otherwise, lifetimes are input separately for each mass.
+    """
+    try:
+        masses_input = input("\nLLP masses in GeV (separated by spaces): ").split()
+        # Automatically remove trailing dots from each mass
+        masses = [float(m.rstrip('.')) for m in masses_input]
 
-#Save results
+        # Hardcoded definition for using the same lifetimes for all masses
+        ifSameLifetimes = True
 
-motherParticleResults = kinematics_samples.get_kinematics() #Get kinematics as an array
-decayProductsResults = boostedProducts
+        c_taus_list = []
+        if ifSameLifetimes:
+            # Single lifetime list for all masses
+            c_taus_input = input("Enter lifetimes c*tau in m for all masses (separated by spaces or commas): ")
+            c_taus = [float(tau) for tau in c_taus_input.replace(',', ' ').split()]
+            c_taus_list = [c_taus] * len(masses)
+        else:
+            # Separate lifetime lists for each mass
+            for mass in masses:
+                c_taus_input = input(f"Life times c*tau for mass {mass} (separated by spaces or commas): ")
+                c_taus = [float(tau) for tau in c_taus_input.replace(',', ' ').split()]
+                c_taus_list.append(c_taus)
+        
+        return masses, c_taus_list
+    except ValueError:
+        raise ValueError("Invalid input for masses or c*taus. Please enter numerical values.")
 
-# Save the kinematic sample data to an output file
-# kinematics_samples.save_kinematics("./outputs", LLP.LLP_name)
+def prompt_decay_channels(decayChannels):
+    print("\nSelect the decay modes:")
+    print("0. All")
+    for i, channel in enumerate(decayChannels):
+        print(f"{i + 1}. {channel}")
+    
+    user_input = input("Enter the numbers of the decay channels to select (separated by spaces): ")
+    try:
+        selected_indices = [int(x) for x in user_input.strip().split()]
+        if not selected_indices:
+            raise ValueError("No selection made.")
+        if 0 in selected_indices:
+            return list(range(len(decayChannels)))
+        else:
+            selected_indices = [x - 1 for x in selected_indices]
+            for idx in selected_indices:
+                if idx < 0 or idx >= len(decayChannels):
+                    raise ValueError(f"Invalid index {idx + 1}.")
+            return selected_indices
+    except ValueError as e:
+        raise ValueError(f"Invalid input for decay channel selection: {e}")
 
-# Save the boosted decay products to an output file
-# boost.saveProducts(boostedProducts, LLP.LLP_name, LLP.mass, LLP.MixingPatternArray, LLP.c_tau, LLP.decayChannels, size_per_channel)
+# Initialize the LLP parameters
+particle_selection = select_particle()
 
-# Merge results
-mergeResults.save(motherParticleResults, decayProductsResults, LLP.LLP_name, LLP.mass, LLP.MixingPatternArray, LLP.c_tau, LLP.decayChannels, size_per_channel)
+# Initialize uncertainty to None
+uncertainty = None
+
+# Only prompt for mixing pattern if the selected particle is HNL
+if particle_selection['LLP_name'] == "HNL":
+    mixing_pattern = prompt_mixing_pattern()
+else:
+    mixing_pattern = None
+
+# If the selected particle is "Dark-photons", prompt for uncertainty
+if particle_selection['LLP_name'] == "Dark-photons":
+    uncertainty = prompt_uncertainty()
+
+# Create LLP instance (mass-independent)
+LLP = initLLP.LLP(mass=None, particle_selection=particle_selection, mixing_pattern=mixing_pattern, uncertainty=uncertainty)
+
+# Prompt for decay channels
+selected_decay_indices = prompt_decay_channels(LLP.decayChannels)
+
+# Prompt for masses and c_taus
+masses, c_taus_list = prompt_masses_and_c_taus()
+
+timing = False
+
+for mass, c_taus in zip(masses, c_taus_list):
+    print(f"\nProcessing mass {mass}")
+
+    LLP.mass = mass
+    LLP.compute_mass_dependent_properties()
+
+    br_visible_val = sum(LLP.BrRatios_distr[idx] for idx in selected_decay_indices)
+    
+    if br_visible_val == 0:
+        print("No decay events for the given selected decay modes for the given mass. Skipping...")
+        continue
+
+    for c_tau in c_taus:
+        print(f"  Processing c_tau {c_tau}")
+
+        coupling_squared = LLP.c_tau_int / c_tau
+
+        if particle_selection['LLP_name'] != "Scalar-quartic":
+            N_LLP_tot = N_pot * LLP.Yield * coupling_squared
+        else:
+            # Br ratio of h -> SS in BC5 model
+            Br_h_SS = 0.01
+            N_LLP_tot = N_pot * LLP.Yield * Br_h_SS
+
+        print(f"    Coupling squared: {coupling_squared}")
+        print(f"    Total number of LLPs produced: {N_LLP_tot}")
+
+        LLP.set_c_tau(c_tau)
+
+        t = time.time()
+
+        kinematics_samples = kinematics.Grids(
+            LLP.Distr, LLP.Energy_distr, nEvents, LLP.mass, LLP.c_tau_input
+        )
+
+        kinematics_samples.interpolate(timing)
+        kinematics_samples.resample(resampleSize, timing)
+        epsilon_polar = kinematics_samples.epsilon_polar
+        kinematics_samples.true_samples(timing)
+        momentum = kinematics_samples.get_momentum()
+
+        finalEvents = len(momentum)
+        epsilon_azimuthal = finalEvents / resampleSize
+
+        unBoostedProducts, size_per_channel = decayProducts.simulateDecays_rest_frame(
+            LLP.mass, LLP.PDGs, LLP.BrRatios_distr, finalEvents, LLP.Matrix_elements,
+            selected_decay_indices, br_visible_val
+        )
+        boostedProducts = boost.tab_boosted_decay_products(
+            LLP.mass, momentum, unBoostedProducts
+        )
+
+        print("    Total time for this iteration: ", time.time() - t)
+
+        motherParticleResults = kinematics_samples.get_kinematics()
+        decayProductsResults = boostedProducts
+
+        P_decay_data = motherParticleResults[:, 6]
+        P_decay_averaged = np.mean(P_decay_data)
+
+        N_ev_tot = N_LLP_tot * epsilon_polar * epsilon_azimuthal * P_decay_averaged * br_visible_val
+        
+        print(f"    Total number of decay events in SHiP: {N_ev_tot}")
+        
+        print(f"    Exporting results...")
+        
+        t = time.time()
+
+        mergeResults.save(
+            motherParticleResults, decayProductsResults, LLP.LLP_name, LLP.mass,
+            LLP.MixingPatternArray, LLP.c_tau_input, LLP.decayChannels, size_per_channel,
+            finalEvents, epsilon_polar, epsilon_azimuthal, N_LLP_tot, coupling_squared,
+            P_decay_averaged, N_ev_tot, br_visible_val, selected_decay_indices
+        )
+        
+        print("    Total time spent on exporting: ", time.time() - t)
+        
+        print(f"    Done")
 

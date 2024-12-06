@@ -2,7 +2,15 @@ import numpy as np
 import time
 import pandas as pd
 import numba as nb
-from .interpolation_functions import  _searchsorted_opt, _bilinear_interpolation, _trilinear_interpolation, _fill_distr_2D, _fill_distr_3D, x_max, y_max
+from .interpolation_functions import (
+    _searchsorted_opt,
+    _bilinear_interpolation,
+    _trilinear_interpolation,
+    _fill_distr_2D,
+    _fill_distr_3D,
+    x_max,
+    y_max
+)
 
 class Grids:
     """
@@ -46,6 +54,8 @@ class Grids:
         Array of interpolated maximum energy values.
     energy : np.ndarray
         Array of sampled energy values.
+    e_min_sampling : np.ndarray
+        Array of minimum energy sampling values.
     interpolated_values : np.ndarray
         Array of interpolated distribution values.
     rsample_size : int
@@ -87,7 +97,7 @@ class Grids:
 
         # Angle range
         self.thetamin = self.Distr[1].min()
-        self.thetamax = 0.043
+        self.thetamax = 0.04451
 
         # Grids
 
@@ -105,7 +115,7 @@ class Grids:
 
         # Filling 3D grid with values of the original distribution `Distr`
         self.distr = _fill_distr_3D(self.grid_x, self.grid_y, self.grid_z, self.Distr)
-    
+
     def interpolate(self, timing=False):
         """
         Perform bilinear and trilinear interpolation on the distribution and energy grids.
@@ -121,24 +131,36 @@ class Grids:
         # Sample angle points
         self.theta = np.random.uniform(self.thetamin, self.thetamax, self.nPoints)
         self.mass = self.m * np.ones(self.nPoints)
-        
+
         # Interpolated values for max energy
         point_bilinear_interpolation = np.column_stack((self.mass, self.theta))
-        self.max_energy = _bilinear_interpolation(point_bilinear_interpolation, self.grid_m, self.grid_a, self.energy_distr)
+        self.max_energy = _bilinear_interpolation(
+            point_bilinear_interpolation, self.grid_m, self.grid_a, self.energy_distr
+        )
+
+        # Define e_min_sampling. Depends on the LLP lifetime and mass. If it is too small, to get good sampling, one needs to sample only the energies for which Exp[-z_min/(c*tau*p/m)] is not tiny. So the minimal sampled energy is fixed to be such that the exponent is at least Exp[-15]
+        self.e_min_sampling = np.maximum(
+            self.m,
+            np.minimum(2.133 * self.m / self.c_tau, 0.5 * self.max_energy)
+        )
 
         # Sample energy and define interpolation points
-        # energy = np.ones_like(self.theta)
-        self.energy = np.random.uniform(self.m, self.max_energy)
+        self.energy = np.random.uniform(self.e_min_sampling, self.max_energy)
         points_to_interpolate = np.column_stack((self.mass, self.theta, self.energy))
-        
-        # points_to_interpolate[:, 2] = self.energy
 
         # Interpolated values for particle distribution
-        self.interpolated_values = _trilinear_interpolation(points_to_interpolate, self.grid_x, self.grid_y, self.grid_z, self.distr, self.max_energy)
-        
+        self.interpolated_values = _trilinear_interpolation(
+            points_to_interpolate,
+            self.grid_x,
+            self.grid_y,
+            self.grid_z,
+            self.distr,
+            self.max_energy
+        )
+
         if timing:
             print(f"\nInterpolation time t = {time.time() - t} s")
-    
+
     def resample(self, rsample_size, timing=False):
         """
         Resample points based on the interpolated distribution values.
@@ -154,12 +176,28 @@ class Grids:
             t = time.time()
 
         self.rsample_size = rsample_size
-        weights = self.interpolated_values * (self.max_energy - self.mass)
-        self.true_points_indices = np.random.choice(self.nPoints, size=self.rsample_size, p=weights/weights.sum())
+        weights = self.interpolated_values * (self.max_energy - self.e_min_sampling)
+        self.weights = weights  # Store weights for later use
+        weights_sum = np.sum(weights)
+        if weights_sum == 0:
+            raise ValueError("Sum of weights is zero. Cannot perform resampling.")
+        probabilities = weights / weights_sum
+        self.true_points_indices = np.random.choice(
+            self.nPoints, size=self.rsample_size, p=probabilities
+        )
 
         # Resampled angles and energies
         self.r_theta = self.theta[self.true_points_indices]
         self.r_energy = self.energy[self.true_points_indices]
+        
+        # Combine theta and energy into a two-column array
+        resampled_data = np.column_stack((self.r_theta, self.r_energy))
+
+        # Save to a text file without headers
+        #np.savetxt('resampled_data.txt', resampled_data, fmt='%.6f', delimiter=' ')
+
+        # Compute epsilon_polar
+        self.epsilon_polar = np.sum(weights) * (self.thetamax - self.thetamin) / len(weights)
 
         if timing:
             print(f"Resample angle and energy  t = {time.time() - t} s")
@@ -180,7 +218,7 @@ class Grids:
         self.phi = np.random.uniform(-np.pi, np.pi, len(self.true_points_indices))
 
         # Momentum calculation
-        momentum = np.sqrt(self.r_energy**2 - (self.m * np.ones_like(self.true_points_indices))**2)
+        momentum = np.sqrt(self.r_energy ** 2 - (self.m * np.ones_like(self.true_points_indices)) ** 2)
         px = momentum * np.cos(self.phi) * np.sin(self.r_theta)
         py = momentum * np.sin(self.phi) * np.sin(self.r_theta)
         pz = momentum * np.cos(self.r_theta)
@@ -189,56 +227,59 @@ class Grids:
         cmin = 1 - np.exp(-32 * self.m / (np.cos(self.r_theta) * self.c_tau * momentum))
         cmax = 1 - np.exp(-82 * self.m / (np.cos(self.r_theta) * self.c_tau * momentum))
         c = np.random.uniform(cmin, cmax, size=self.rsample_size)
-        c[c == 1] = 0.9999999999999999
-
-        z = np.cos(self.r_theta) * self.c_tau * (momentum / self.m) * np.log(1 / (1 - c))
+        #c[c == 1] = 0.9999999999999999
+        
+        # If c > 0.9999999995, set z = 32
+        # Otherwise, compute z using the original formula
+        z = np.where(
+        c > 0.9999999995,
+        32,
+        np.cos(self.r_theta) * self.c_tau * (momentum / self.m) * np.log(1 / (1 - c))
+        )
 
         # X and Y values
         x = z * np.cos(self.phi) * np.tan(self.r_theta)
         y = z * np.sin(self.phi) * np.tan(self.r_theta)
 
         # Decay probability
-        P_decay = np.exp(-32 * self.m / (np.cos(self.r_theta) * self.c_tau * momentum)) - np.exp(-82 * self.m / (np.cos(self.r_theta) * self.c_tau * momentum))
+        P_decay = (
+            np.exp(-32 * self.m / (np.cos(self.r_theta) * self.c_tau * momentum))
+            - np.exp(-82 * self.m / (np.cos(self.r_theta) * self.c_tau * momentum))
+        )
 
         # Mask for particles decaying inside the volume
-        mask = (-x_max(z) < x) & (x < x_max(z)) & (-y_max(z) < y) & (y < y_max(z)) & (32 < z) & (z < 82)
+        mask = (
+            (-x_max(z) < x)
+            & (x < x_max(z))
+            & (-y_max(z) < y)
+            & (y < y_max(z))
+            & (32 <= z)
+            & (z <= 82)
+        )
 
-        # self.kinematics_dic = {
-        #     "theta": self.r_theta[mask],
-        #     "energy": self.r_energy[mask],
-        #     "px": px[mask],
-        #     "py": py[mask],
-        #     "pz": pz[mask],
-        #     "P": momentum[mask],
-        #     "x": x[mask],
-        #     "y": y[mask],
-        #     "z": z[mask],
-        #     "r": np.sqrt(x[mask]**2 + y[mask]**2 + z[mask]**2),
-        #     "P_decay": P_decay[mask]
-        # }
         self.kinematics_dic = {
             "px": px[mask],
             "py": py[mask],
             "pz": pz[mask],
             "energy": self.r_energy[mask],
-            "m": self.m*np.ones_like(px[mask]),
-            "PDG":12345678*np.ones_like(px[mask]),
+            "m": self.m * np.ones_like(px[mask]),
+            "PDG": 12345678 * np.ones_like(px[mask]),
             "P_decay": P_decay[mask],
             "x": x[mask],
             "y": y[mask],
             "z": z[mask]
         }
-        
+
         if timing:
             print(f"Sampling vertices t = {time.time() - t} s")
-        
+
         self.momentum = np.column_stack((px[mask], py[mask], pz[mask], self.r_energy[mask]))
 
     def get_kinematics(self):
         dic = self.kinematics_dic
         kinematics = np.column_stack(list(dic.values()))
         return kinematics
-    
+
     def save_kinematics(self, path, name):
         """
         Save the kinematic properties to a CSV file.
@@ -247,9 +288,11 @@ class Grids:
         ----------
         path : str
             Directory path to save the kinematics file.
+        name : str
+            Name prefix for the kinematics file.
         """
         kinetics_df = pd.DataFrame(self.kinematics_dic)
-        kinetics_df.to_csv(path + "/" + name +"_kinematics_sampling.dat", sep="\t", index=False)
+        kinetics_df.to_csv(f"{path}/{name}_kinematics_sampling.dat", sep="\t", index=False)
 
     def get_energy(self):
         """
@@ -261,7 +304,7 @@ class Grids:
             The array of energy values if set, otherwise None.
         """
         return self.r_energy
-    
+
     def get_theta(self):
         """
         Retrieve the resampled angle (theta) values stored in the instance.
@@ -272,7 +315,7 @@ class Grids:
             The array of angle values if set, otherwise None.
         """
         return self.r_theta
-    
+
     def get_momentum(self):
         """
         Retrieve the 4-momentum stored in the instance.
@@ -283,3 +326,4 @@ class Grids:
             The 4-momentum, otherwise None.
         """
         return self.momentum
+
