@@ -34,7 +34,7 @@ Running the main file `simulate.py` will first ask users about the number of LLP
 Ensure you have the required packages installed. You can use the following command to install the dependencies:
 
 ```bash
-pip3 install numpy sympy numba scipy
+pip3 install numpy sympy numba scipy plotly
 ```
 
 Also, [pythia8](https://pythia.org/) must be installed with python config. When configuring it, type
@@ -69,7 +69,7 @@ Once this is done, the lib path has to be specified in the script `funcs/decayPr
 - Post-processing:
   - `events_analysis.py`: the script computing various distributions with the decaying LLP and its decay products: position of the decay vertices, energy distributions, multiplicity, etc. The output is saved in the folder `plots/<LLP>/<GivenLLP>`.
   - `total-plots.py`: the script making the plots of some averaged quantites, such as the polar acceptance, total geometric acceptance, mean decay probability, etc. The output is a single plot saved in the folder `plots/<LLP>`.
-  - `event-display.py`: the script making pdf plots showing the decay point of the LLP, the direction of its momentum, and the directions of its decay products.
+  - `event-display.py`: the script making .pdf and interactive .html plots showing the decay point of the LLP, the direction of its momentum, and the directions of its decay products.
 
 ## Output files
 
