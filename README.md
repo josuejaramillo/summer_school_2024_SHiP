@@ -34,6 +34,14 @@ Ensure you have the required packages installed. You can use the following comma
 pip3 install numpy sympy numba scipy
 ```
 
+Also, [pythia8](https://pythia.org/) must be installed with python config. When configuring it, type
+
+`./configure --with-python-config=python3-config`
+
+Once this is done, the lib path has to be specified in the script `funcs/decayProducts.py`. Currently, it is
+
+`sys.path.insert(0, '/home/name/Downloads/pythia8312/lib')`
+
 ## File Structure
 
 - `funcs/`:
