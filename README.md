@@ -55,16 +55,16 @@ Running the main file `simulate.py` will first ask users about the number of LLP
  
   - where `...` means the data for the other decay products. Some of the rows end with the strings `0. 0. 0. 0. 0. -999.`, to account for varying number of decay products in the same decay channel and maintain the flat array if merging all the datasets.
   
- - The total information file: contains the self-explanatory header describing the meaning of columns.
+ - The file with the total information: contains the self-explanatory header describing the meaning of columns.
 
 
 ## Implemented LLPs
 
 Currently, the following LLPs are implemented:
 
- - HNLs with arbitrary mixing pattern (`HNL`)
- - Higgs-like scalars produced by the mixing (`Scalar-mixing`)
- - Higgs-like scalars produced by the trilinear coupling (`Scalar-quartic`). If one wants to compute the number of events in the BC5 model, one needs to sum the event rate from the mixing model and the quartic model.
- - ALPs coupled to photons (`ALP-photon`)
+ - HNLs with arbitrary mixing pattern (`HNL`).
+ - Higgs-like scalars produced by the mixing (`Scalar-mixing`).
+ - Higgs-like scalars produced by the trilinear coupling (`Scalar-quartic`). If one wants to compute the number of events in the BC5 model, one needs to sum the event rate from the mixing model and the quartic model, with the appropriate rescaling.
+ - ALPs coupled to photons (`ALP-photon`).
  
  
