@@ -26,7 +26,8 @@ pip3 install numpy sympy numba scipy
   - `kinematics.py`: Contains functions for handling kinematic distributions and interpolations.
 
 - Main code `simulate.py`: thr script to run the decay simulation. Produces two outputs in the folder `outputs/<LLP>`:
-  - The information about the decay events of LLPs and decay products (the file `eventData/<LLP>_<mass>_<lifetime>_....txt`)
+  - The information about the decay events of LLPs and decay products (the file `eventData/<LLP>_<mass>_<lifetime>_....txt`), with dots meaning the other parameters relevant for the simulation (such as the mixing pattern in the case of HNLs, etc.).
+  - The information about total quantities from the simulation: mass, coupling, lifetime, number of events, etc. (the file `eventData/<LLP>/total/<LLP>-...-total.txt`).
   
 - Post-processing:
   - `events_analysis.py`: the script computing various distributions with the decaying LLP and its decay products: position of the decay vertices, energy distributions, multiplicity, etc. The output is saved in the folder `plots/<LLP>/<GivenLLP>`.
@@ -55,6 +56,8 @@ The `decayProducts.simulateDecays_rest_frame` function performs the decay simula
    `p_x,LLP p_y,LLP p_z,LLP E_LLP mass_LLP PDG_LLP P_decay,LLP x_decay,LLP y_decay,LLP z_decay,LLP p_x,prod1 p_y,prod1 p_z,prod1 E_prod1 mass_prod1 pdg_prod1 p_x,prod2 ...`
  
   - where `...` means the data for the other decay products. Some of the rows end with the strings `0. 0. 0. 0. 0. -999.`, to account for varying number of decay products in the same decay channel and maintain the flat array if merging all the datasets.
+  
+ - The total information file: contains the self-explanatory header describing the meaning of columns.
 
 
 ### Example
