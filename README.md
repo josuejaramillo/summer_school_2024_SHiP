@@ -100,5 +100,6 @@ Currently, the following LLPs are implemented:
 - Adding theoretical uncertainty for Higgs-like scalars.
 - Improving the performance of the code (parallelization of pythia8 run, etc.).
 - Adjusting the SHiP setup with the up-to-date setup.
-- Adding cascade production for HNLs, Higgs-like scalars, dark photons.
+- Adding cascade production from kaons and light mesons for HNLs, Higgs-like scalars, dark photons.
 - Adding more sophisticated simulation codes (such as the machinery to simulate HNL-anti-HNL oscillations).
+- Introduce individual identifiers for various LLPs (currently, it is 12345678).
