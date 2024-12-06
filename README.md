@@ -45,7 +45,7 @@ Running the main file `simulate.py` will first ask users about the number of LLP
  
  After that, the simulation will start. 
 
-### Output files
+## Output files
 
 - The detailed event record file: 
  - The first string is `Sampled ## events inside SHiP volume. Total number of produced LLPs: ##. Polar acceptance: ##. Azimuthal acceptance: ##. Averaged decay probability: ##. Visible Br Ratio: ##. Total number of events: ##`. The meanings of the numbers are: the total sample size; the total number of LLPs produced during 15 years of SHIP running; the amount of LLPs pointing to the polar range of the experiment; of those, the amount of LLPs that also pass the azimuthal acceptance cut; of those, the averaged probability to decay inside the SHiP volume; the visible branching ratio of selected decay channels; the total number of decay events inside the decay volume.
@@ -55,7 +55,7 @@ Running the main file `simulate.py` will first ask users about the number of LLP
  
  - where `...` means the data for the other decay products. Some of the rows end with the strings `0. 0. 0. 0. 0. -999.`, to account for varying number of decay products in the same decay channel and maintain the flat array if merging all the datasets.
   
- -The file with the total information: contains the self-explanatory header describing the meaning of columns.
+ - The file with the total information: contains the self-explanatory header describing the meaning of columns.
 
 
 ## Implemented LLPs
