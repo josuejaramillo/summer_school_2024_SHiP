@@ -20,7 +20,7 @@ The code does not simulate decay products acceptance. Instead, its output is pro
 Running the main file `simulate.py` will first ask users about the number of LLPs sampled in the polar range of the SHiP experiment. Then, users will be asked about: 
 
  - Selecting the LLP.
- - Typing some LLP parameters such as the mixing pattern (optionally, depending on LLP).
+ - Typing some LLP parameters such as the mixing pattern, variation of the theoretical uncertainty, and others (optionally, depending on LLP).
  - Selecting the LLP's decay modes for which the simulation will be launched (their names sould be self-explanatory).
  - Range of LLP masses for which the simulation will be launched.
  - Range of LLP lifetimes.
@@ -88,9 +88,17 @@ Once this is done, the lib path has to be specified in the script `funcs/decayPr
 
 Currently, the following LLPs are implemented:
 
- - HNLs with arbitrary mixing pattern (`HNL`).
- - Higgs-like scalars produced by the mixing (`Scalar-mixing`).
- - Higgs-like scalars produced by the trilinear coupling (`Scalar-quartic`). If one wants to compute the number of events in the BC5 model, one needs to sum the event rate from the mixing model and the quartic model, with the appropriate rescaling.
- - ALPs coupled to photons (`ALP-photon`).
- - Dark photons (`Dark-photons`). They have a large theoretical uncertainty in the production. Because of this, the users are asked to select the flux within the range of this uncertainty - `lower`, `central`, or `upper` (see 2409.11096 for details). 
+- HNLs with arbitrary mixing pattern (`HNL`).
+- Higgs-like scalars produced by the mixing (`Scalar-mixing`).
+- Higgs-like scalars produced by the trilinear coupling (`Scalar-quartic`). If one wants to compute the number of events in the BC5 model, one needs to sum the event rate from the mixing model and the quartic model, with the appropriate rescaling.
+- ALPs coupled to photons (`ALP-photon`).
+- Dark photons (`Dark-photons`). They have a large theoretical uncertainty in the production. Because of this, the users are asked to select the flux within the range of this uncertainty - `lower`, `central`, or `upper` (see 2409.11096 for details). 
  
+## To be done
+
+- Adding more LLPs (ALPs, B-L mediators, HNLs with dipole coupling, inelastic and elastic LDM, etc.).
+- Adding theoretical uncertainty for Higgs-like scalars.
+- Improving the performance of the code (parallelization of pythia8 run, etc.).
+- Adjusting the SHiP setup with the up-to-date setup.
+- Adding cascade production for HNLs, Higgs-like scalars, dark photons.
+- Adding more sophisticated simulation codes (such as the machinery to simulate HNL-anti-HNL oscillations).
