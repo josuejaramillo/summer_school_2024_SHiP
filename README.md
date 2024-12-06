@@ -9,14 +9,14 @@ This repository contains code for simulating particle decays of a Lightest Long-
 Ensure you have the required packages installed. You can use the following command to install the dependencies:
 
 ```bash
-pip install numpy sympy numba scipy
+pip3 install numpy sympy numba scipy
 ```
 
 ## File Structure
 
 - `funcs/`:
   - `initLLP.py`: Contains the `LLP` class which initializes the LLP object with attributes like mass, PDGs (Particle Data Group identifiers), and branching ratios.
-  - `decayProducts.py`: Contains functions for simulating decays and computing decay products.
+  - `decayProducts.py`: Contains functions for simulating decays of various LLPs, as well as the routine to perform showering and hadronization of quark and gluon decays via interfacing with pythia8.
   - `HNLmerging.py`: Contains functions for handling HNL merging processes.
   - `PDG.py`: Contains functions or data related to Particle Data Group identifiers.
   - `rotateVectors.py`: Contains functions for rotating vectors.
@@ -25,8 +25,13 @@ pip install numpy sympy numba scipy
   - `boost.py`: Contains functions for boosting decay products to the lab frame.
   - `kinematics.py`: Contains functions for handling kinematic distributions and interpolations.
 
-- Main code:
-  - `simulate.py`: Main script to run the decay simulation.
+- Main code `simulate.py`: thr script to run the decay simulation. Produces two outputs in the folder `outputs/<LLP>`:
+  - The information about the decay events of LLPs and decay products (the file `eventData/<LLP>_<mass>_<lifetime>_....txt`). There: 
+    -- the first string is `Sampled ## events inside SHiP volume. Total number of produced LLPs: ##. Polar acceptance: ##. Azimuthal acceptance: ##. Averaged decay probability: ##. Visible Br Ratio: ##. Total number of events: ##`. The meanings of the number are: the total sample size; the total number of LLPs produced during 15 years of SHIP running; the amount of LLPs pointing to the polar range of the experiment; of those, the amount of LLPs that also pass the azimuthal acceptance cut; of those, the averaged probability to decay inside the SHiP volume; the visible branching ratio of selected decay channels; the total number of decay events inside the decay volume.
+  
+- Post-processing:
+  - `events_analysis.py`: the script computing various distributions with the decaying LLP and its decay products: position of the decay vertices, energy distributions, multiplicity, etc. The output is saved in the folder `plots/<LLP>/<GivenLLP>`.
+  - `total-plots.py`: the script making the plots of some averaged quantites, such as the polar acceptance, total geometric acceptance, mean decay probability, etc. The output is a single plot saved in the folder `plots/<LLP>`.
 
 ## Usage
 
@@ -40,7 +45,7 @@ The `initLLP.LLP()` function initializes an LLP object with properties needed fo
 
 Simulate Decays:
 
-The `decayProducts.simulateDecays_rest_frame` function performs the decay simulation. It uses parameters from the LLP object and generates decay products.
+The `decayProducts.simulateDecays_rest_frame` function performs the decay simulation. It uses parameters from the LLP and generates decay products.
 
 ### Example
 
