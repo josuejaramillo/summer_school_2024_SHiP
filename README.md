@@ -26,8 +26,7 @@ pip3 install numpy sympy numba scipy
   - `kinematics.py`: Contains functions for handling kinematic distributions and interpolations.
 
 - Main code `simulate.py`: thr script to run the decay simulation. Produces two outputs in the folder `outputs/<LLP>`:
-  - The information about the decay events of LLPs and decay products (the file `eventData/<LLP>_<mass>_<lifetime>_....txt`). There: 
-    -- the first string is `Sampled ## events inside SHiP volume. Total number of produced LLPs: ##. Polar acceptance: ##. Azimuthal acceptance: ##. Averaged decay probability: ##. Visible Br Ratio: ##. Total number of events: ##`. The meanings of the number are: the total sample size; the total number of LLPs produced during 15 years of SHIP running; the amount of LLPs pointing to the polar range of the experiment; of those, the amount of LLPs that also pass the azimuthal acceptance cut; of those, the averaged probability to decay inside the SHiP volume; the visible branching ratio of selected decay channels; the total number of decay events inside the decay volume.
+  - The information about the decay events of LLPs and decay products (the file `eventData/<LLP>_<mass>_<lifetime>_....txt`)
   
 - Post-processing:
   - `events_analysis.py`: the script computing various distributions with the decaying LLP and its decay products: position of the decay vertices, energy distributions, multiplicity, etc. The output is saved in the folder `plots/<LLP>/<GivenLLP>`.
@@ -46,6 +45,15 @@ The `initLLP.LLP()` function initializes an LLP object with properties needed fo
 Simulate Decays:
 
 The `decayProducts.simulateDecays_rest_frame` function performs the decay simulation. It uses parameters from the LLP and generates decay products.
+
+## Output files
+
+- The detailed event record file: 
+ - The first string is `Sampled ## events inside SHiP volume. Total number of produced LLPs: ##. Polar acceptance: ##. Azimuthal acceptance: ##. Averaged decay probability: ##. Visible Br Ratio: ##. Total number of events: ##`. The meanings of the numbers are: the total sample size; the total number of LLPs produced during 15 years of SHIP running; the amount of LLPs pointing to the polar range of the experiment; of those, the amount of LLPs that also pass the azimuthal acceptance cut; of those, the averaged probability to decay inside the SHiP volume; the visible branching ratio of selected decay channels; the total number of decay events inside the decay volume.
+ - Then, the data is split into blocks. Each is started with `#<process=##; sample_points=##>`. The meanings of `##` are: the name of the LLP decay process; the number of samples per this process. After this string, there is the tabulated data with the decay information. The meaning of the elements is as follows: 
+ `p_x,LLP p_y,LLP p_z,LLP E_LLP mass_LLP PDG_LLP P_decay,LLP x_decay,LLP y_decay,LLP z_decay,LLP p_x,prod1 p_y,prod1 p_z,prod1 E_prod1 mass_prod1 pdg_prod1 p_x,prod2 ...`
+ where `...` means the data for the other decay products. Some of the rows end with the strings `0. 0. 0. 0. 0. -999.`, to account for varying number of decay products in the same decay channel and maintain the flat array if merging all the datasets.
+
 
 ### Example
 
