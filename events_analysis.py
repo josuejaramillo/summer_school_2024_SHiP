@@ -3,227 +3,11 @@ import numpy as np
 import re
 import sys
 import matplotlib.pyplot as plt
+from funcs.ship_volume import plot_decay_volume  # Ensure this module is available
 from collections import Counter
 from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-
-def parse_filenames(directory):
-    """
-    Parses filenames in the given directory and its subdirectories to extract LLP names, masses, lifetimes, and mixing patterns.
-    Returns a dictionary llp_dict[llp_name][(mass, lifetime)][mixing_patterns] = filepath
-    """
-    llp_dict = {}  # LLP_name: { (mass, lifetime): { mixing_patterns: filepath } }
-
-    for root, dirs, files in os.walk(directory):
-        for filename in files:
-            if filename.endswith('_decayProducts.dat'):
-                filepath = os.path.relpath(os.path.join(root, filename), directory)
-                # Extract LLP_name from the parent directory of 'eventData'
-                rel_path = os.path.relpath(root, directory)
-                llp_name = os.path.basename(os.path.dirname(rel_path))
-                # Parse filename to extract mass, lifetime, and mixing patterns
-                base_name = filename[:-len('_decayProducts.dat')]
-                tokens = base_name.split('_')
-                # Identify indices of tokens that can be converted to float
-                float_token_indices = []
-                for i, token in enumerate(tokens):
-                    try:
-                        float(token)
-                        float_token_indices.append(i)
-                    except ValueError:
-                        continue
-                if len(float_token_indices) >= 2:
-                    mass_index = float_token_indices[0]
-                    # mass and lifetime
-                    mass = tokens[mass_index]
-                    lifetime = tokens[mass_index + 1]
-                    # Mixing patterns, if any
-                    mixing_pattern_tokens = tokens[mass_index + 2:]
-                    mixing_patterns = []
-                    for token in mixing_pattern_tokens:
-                        try:
-                            mixing_patterns.append(float(token))
-                        except ValueError:
-                            print(f"Invalid mixing pattern token: {token} in filename {filename}")
-                    # Convert mass and lifetime to float
-                    mass = float(mass)
-                    lifetime = float(lifetime)
-                    # Store in llp_dict
-                    if llp_name not in llp_dict:
-                        llp_dict[llp_name] = {}
-                    mass_lifetime = (mass, lifetime)
-                    if mass_lifetime not in llp_dict[llp_name]:
-                        llp_dict[llp_name][mass_lifetime] = {}
-                    mixing_patterns_tuple = tuple(mixing_patterns) if mixing_patterns else None
-                    llp_dict[llp_name][mass_lifetime][mixing_patterns_tuple] = filepath
-                else:
-                    print(f"Filename {filename} does not have enough float tokens to extract mass and lifetime.")
-            else:
-                continue  # Skip files not ending with '_decayProducts.dat'
-    return llp_dict
-
-def user_selection(llp_dict):
-    """
-    Allows the user to select an LLP, mass-lifetime combination, and mixing patterns.
-    Returns the selected filepath and the selected LLP name.
-    """
-    print("Available LLPs:")
-    llp_names_list = sorted(llp_dict.keys())
-    for i, llp_name in enumerate(llp_names_list):
-        print(f"{i+1}. {llp_name}")
-
-    # Ask user to choose an LLP
-    while True:
-        try:
-            choice = int(input("Choose an LLP by typing the number: "))
-            if 1 <= choice <= len(llp_names_list):
-                break
-            else:
-                print(f"Please enter a number between 1 and {len(llp_names_list)}.")
-        except ValueError:
-            print("Invalid input. Please enter a valid number.")
-    selected_llp = llp_names_list[choice - 1]
-    print(f"Selected LLP: {selected_llp}")
-
-    # Get available mass-lifetime combinations
-    mass_lifetime_list = sorted(llp_dict[selected_llp].keys())
-    print(f"Available mass-lifetime combinations for {selected_llp}:")
-    for i, (mass, lifetime) in enumerate(mass_lifetime_list):
-        print(f"{i+1}. mass={mass:.6e} GeV, lifetime={lifetime:.6e}")
-
-    # Ask user to choose a mass-lifetime
-    while True:
-        try:
-            mass_lifetime_choice = int(input("Choose a mass-lifetime combination by typing the number: "))
-            if 1 <= mass_lifetime_choice <= len(mass_lifetime_list):
-                break
-            else:
-                print(f"Please enter a number between 1 and {len(mass_lifetime_list)}.")
-        except ValueError:
-            print("Invalid input. Please enter a valid number.")
-    selected_mass_lifetime = mass_lifetime_list[mass_lifetime_choice - 1]
-    selected_mass, selected_lifetime = selected_mass_lifetime
-    print(f"Selected mass: {selected_mass:.6e} GeV, lifetime: {selected_lifetime:.6e}")
-
-    # Get mixing patterns
-    mixing_patterns_dict = llp_dict[selected_llp][selected_mass_lifetime]
-    mixing_patterns_list = sorted(mixing_patterns_dict.keys())
-    if any(mixing_patterns_list):
-        print(f"Available mixing patterns for {selected_llp} with mass {selected_mass:.6e} GeV and lifetime {selected_lifetime:.6e}:")
-        for i, mixing_patterns in enumerate(mixing_patterns_list):
-            print(f"{i+1}. {mixing_patterns}")
-        # Ask user to choose a mixing pattern
-        while True:
-            try:
-                mixing_choice = int(input("Choose a mixing pattern by typing the number: "))
-                if 1 <= mixing_choice <= len(mixing_patterns_list):
-                    break
-                else:
-                    print(f"Please enter a number between 1 and {len(mixing_patterns_list)}.")
-            except ValueError:
-                print("Invalid input. Please enter a valid number.")
-        selected_mixing_patterns = mixing_patterns_list[mixing_choice - 1]
-        print(f"Selected mixing pattern: {selected_mixing_patterns}")
-    else:
-        selected_mixing_patterns = None
-
-    # Find the file matching the selection
-    selected_filepath = mixing_patterns_dict[selected_mixing_patterns]
-    print(f"Selected file: {selected_filepath}")
-
-    return selected_filepath, selected_llp
-
-def read_file(filepath):
-    """
-    Reads the file at the given filepath.
-    Returns finalEvents, epsilon_polar, epsilon_azimuthal, br_visible_val, channels
-    """
-    with open(filepath, 'r') as f:
-        first_line = f.readline().strip()
-        # Expected format:
-        # Sampled {finalEvents} events inside SHiP volume. Total number of produced LLPs: {N_LLP_tot}. Polar acceptance: {epsilon_polar}. Azimuthal acceptance: {epsilon_azimuthal}. Averaged decay probability: {P_decay_averaged}. Visible Br Ratio: {br_visible_val:.6e}. Total number of events: {N_ev_tot}
-        pattern = (
-            r'Sampled\s+(?P<finalEvents>[\d\.\+\-eE]+)\s+events inside SHiP volume\. '
-            r'Total number of produced LLPs:\s+(?P<N_LLP_tot>[\d\.\+\-eE]+)\. '
-            r'Polar acceptance:\s+(?P<epsilon_polar>[\d\.\+\-eE]+)\. '
-            r'Azimuthal acceptance:\s+(?P<epsilon_azimuthal>[\d\.\+\-eE]+)\. '
-            r'Averaged decay probability:\s+(?P<P_decay_averaged>[\d\.\+\-eE]+)\. '
-            r'Visible Br Ratio:\s+(?P<br_visible_val>[\d\.\+\-eE]+)\. '
-            r'Total number of events:\s+(?P<N_ev_tot>[\d\.\+\-eE]+)'
-        )
-        match = re.match(pattern, first_line)
-        if match:
-            finalEvents = float(match.group('finalEvents'))
-            N_LLP_tot = float(match.group('N_LLP_tot'))
-            epsilon_polar = float(match.group('epsilon_polar'))
-            epsilon_azimuthal = float(match.group('epsilon_azimuthal'))
-            P_decay_averaged = float(match.group('P_decay_averaged'))
-            br_visible_val = float(match.group('br_visible_val'))
-            N_ev_tot = float(match.group('N_ev_tot'))
-            print(f"finalEvents: {finalEvents}, N_LLP_tot: {N_LLP_tot}, epsilon_polar: {epsilon_polar}, "
-                  f"epsilon_azimuthal: {epsilon_azimuthal}, P_decay_averaged: {P_decay_averaged}, "
-                  f"br_visible_val: {br_visible_val}, N_ev_tot: {N_ev_tot}")
-        else:
-            print("Error: First line does not match expected format.")
-            sys.exit(1)
-
-        # Skip any empty lines
-        while True:
-            line = f.readline()
-            if not line:
-                break
-            if line.strip() != '':
-                break
-        # Now process the rest of the file
-        # Extract channels and sample_points
-        channels = {}
-        current_channel = None
-        current_channel_size = 0
-        current_data = []
-        # If the line we just read is a channel header, process it
-        if line.strip().startswith('#<process='):
-            match = re.match(
-                r'#<process=(?P<channel>.*?);\s*sample_points=(?P<channel_size>[\d\.\+\-eE]+)>', line.strip())
-            if match:
-                current_channel = match.group('channel')
-                current_channel_size = int(float(match.group('channel_size')))
-                current_data = []
-            else:
-                print(f"Error: Could not parse channel line: {line}")
-        else:
-            print("Error: Expected channel header after first line.")
-            sys.exit(1)
-
-        # Continue reading the file
-        for line in f:
-            line = line.strip()
-            if line.startswith('#<process='):
-                # This is a new channel
-                match = re.match(
-                    r'#<process=(?P<channel>.*?);\s*sample_points=(?P<channel_size>[\d\.\+\-eE]+)>', line)
-                if match:
-                    if current_channel is not None:
-                        # Save the data of the previous channel
-                        channels[current_channel] = {
-                            'size': current_channel_size, 'data': current_data}
-                    current_channel = match.group('channel')
-                    current_channel_size = int(float(match.group('channel_size')))
-                    current_data = []
-                else:
-                    print(f"Error: Could not parse channel line: {line}")
-            elif line == '':
-                # Empty line, skip
-                continue
-            else:
-                # This is data
-                current_data.append(line)
-
-        # After the loop, save the last channel's data
-        if current_channel is not None:
-            channels[current_channel] = {
-                'size': current_channel_size, 'data': current_data}
-
-    return finalEvents, epsilon_polar, epsilon_azimuthal, br_visible_val, channels
+from funcs.selecting_processing import parse_filenames, user_selection, read_file  # Importing common functions
 
 def plot_channels(channels, finalEvents, output_path):
     """
@@ -232,7 +16,7 @@ def plot_channels(channels, finalEvents, output_path):
     channel_names = list(channels.keys())
     channel_sizes = [channels[ch]['size'] for ch in channel_names]
 
-    plt.figure()
+    plt.figure(figsize=(10, 6))
     plt.bar(channel_names, channel_sizes, color='skyblue', edgecolor='black')
     plt.title(f"$N_{{\\mathrm{{entries}}}}$ = {finalEvents:.0f}")
     plt.xlabel("Channel")
@@ -262,6 +46,7 @@ def extract_quantities(channels):
         'decay_products_counts': [],  # total decay products per event
         'charged_decay_products_counts': [],  # charged decay products per event
         'decay_products_per_event_counts': {},  # counts of dedicated products per event
+        'ifAllPoint_counts': Counter(),  # New: counts of events where all decay products point to detectors per channel
     }
 
     # Initialize per-event counts for dedicated decay products
@@ -307,6 +92,7 @@ def extract_quantities(channels):
             event_decay_products_counter = Counter()
             # The rest of the numbers are grouped into sets of 6: px, py, pz, e, mass, pdg
             decay_products = numbers[10:]
+            all_point = True  # Initialize flag for ifAllPoint
             for i in range(0, len(decay_products), 6):
                 # Each decay product has 6 numbers
                 if i+6 > len(decay_products):
@@ -322,8 +108,11 @@ def extract_quantities(channels):
                     # Do not count
                     continue
                 else:
+                    # Exclude neutrinos
+                    if int(abs(pdg)) in [12, 14, 16]:
+                        continue
                     decay_products_count += 1
-                    if pdg not in [22., 130., 310., 2112.]:
+                    if pdg not in [22., 130., 310., 2112., -2112.]:
                         # These are neutral particles, so count as charged
                         charged_decay_products_count += 1
                     # Count dedicated products
@@ -349,6 +138,19 @@ def extract_quantities(channels):
                     else:
                         event_decay_products_counter['other'] +=1
 
+                    # Calculate projections to z=82 m plane
+                    if pz == 0:
+                        # Avoid division by zero; consider this event as not satisfying the condition
+                        all_point = False
+                        break
+                    x_proj = x_mother + (82 - z_mother) * px / pz
+                    y_proj = y_mother + (82 - z_mother) * py / pz
+
+                    if not (-3.1 < y_proj < 3.1 and -2 < x_proj < 2):
+                        all_point = False
+                        # No need to check further decay products for this event
+                        break
+
             quantities['decay_products_counts'].append(decay_products_count)
             quantities['charged_decay_products_counts'].append(charged_decay_products_count)
 
@@ -357,82 +159,13 @@ def extract_quantities(channels):
                 count = event_decay_products_counter.get(ptype, 0)
                 quantities['decay_products_per_event_counts'][ptype].append(count)
 
+            # Update ifAllPoint_counts
+            if all_point:
+                quantities['ifAllPoint_counts'][channel] += 1
+
     return quantities
 
-def plot_decay_volume(ax):
-    """
-    Plots the decay volume geometry as a trapezoidal prism on the given Axes3D object.
-    The decay region extends in z from 32 m to 82 m.
-    In x, its width is z-dependent: from -(0.02*(82-z) + 2/25*(z-32))/2 to +(0.02*(82-z) + 2/25*(z-32))/2.
-    In y, from -(0.054*(82-z) + 0.124*(z-32))/2 to +(0.054*(82-z) + 0.124*(z-32))/2.
-    The decay volume is colored light gray with gray edges.
-    """
-    # Define z boundaries
-    z_min = 32  # in meters
-    z_max = 82  # in meters
-
-    # Calculate x and y boundaries at z_min and z_max
-    # At z_min = 32
-    x_min_zmin = -(0.02*(82 - z_min) + (2/25)*(z_min - 32))/2
-    x_max_zmin = (0.02*(82 - z_min) + (2/25)*(z_min - 32))/2
-    y_min_zmin = -(0.054*(82 - z_min) + 0.124*(z_min - 32))/2
-    y_max_zmin = (0.054*(82 - z_min) + 0.124*(z_min - 32))/2
-
-    # At z_max = 82
-    x_min_zmax = -(0.02*(82 - z_max) + (2/25)*(z_max - 32))/2
-    x_max_zmax = (0.02*(82 - z_max) + (2/25)*(z_max - 32))/2
-    y_min_zmax = -(0.054*(82 - z_max) + 0.124*(z_max - 32))/2
-    y_max_zmax = (0.054*(82 - z_max) + 0.124*(z_max - 32))/2
-
-    # Define the 8 vertices of the trapezoidal prism
-    vertices = [
-        [x_min_zmin, y_min_zmin, z_min],
-        [x_max_zmin, y_min_zmin, z_min],
-        [x_max_zmin, y_max_zmin, z_min],
-        [x_min_zmin, y_max_zmin, z_min],
-        [x_min_zmax, y_min_zmax, z_max],
-        [x_max_zmax, y_min_zmax, z_max],
-        [x_max_zmax, y_max_zmax, z_max],
-        [x_min_zmax, y_max_zmax, z_max]
-    ]
-
-    # Define the 12 edges of the prism
-    edges = [
-        [vertices[0], vertices[1]],
-        [vertices[1], vertices[2]],
-        [vertices[2], vertices[3]],
-        [vertices[3], vertices[0]],
-        [vertices[4], vertices[5]],
-        [vertices[5], vertices[6]],
-        [vertices[6], vertices[7]],
-        [vertices[7], vertices[4]],
-        [vertices[0], vertices[4]],
-        [vertices[1], vertices[5]],
-        [vertices[2], vertices[6]],
-        [vertices[3], vertices[7]]
-    ]
-
-    # Plot the edges
-    for edge in edges:
-        xs, ys, zs = zip(*edge)
-        ax.plot(xs, ys, zs, color='gray', linewidth=1)
-
-    # Define the 6 faces of the prism
-    faces = [
-        [vertices[0], vertices[1], vertices[2], vertices[3]],  # Bottom face
-        [vertices[4], vertices[5], vertices[6], vertices[7]],  # Top face
-        [vertices[0], vertices[1], vertices[5], vertices[4]],  # Front face
-        [vertices[1], vertices[2], vertices[6], vertices[5]],  # Right face
-        [vertices[2], vertices[3], vertices[7], vertices[6]],  # Back face
-        [vertices[3], vertices[0], vertices[4], vertices[7]]   # Left face
-    ]
-
-    # Create a Poly3DCollection for the faces
-    face_collection = Poly3DCollection(faces, linewidths=0.5, edgecolors='gray', alpha=0.3)
-    face_collection.set_facecolor('lightgray')  # Light gray with transparency
-    ax.add_collection3d(face_collection)
-
-def plot_histograms(quantities, output_path):
+def plot_histograms(quantities, channels, output_path):
     """
     Plots the required histograms and saves them in the output_path directory.
     All histograms are normalized to represent probability densities.
@@ -537,9 +270,23 @@ def plot_histograms(quantities, output_path):
             plt.close()
 
     # 3D scatter plot of (x_mother, y_mother, z_mother) unweighted
+    # Limit to maximum 10k points
+    max_points = 10000
+    total_points = len(x_mother)
+    if total_points > max_points:
+        np.random.seed(42)  # For reproducibility
+        indices_unw = np.random.choice(total_points, max_points, replace=False)
+        x_plot_unw = x_mother[indices_unw]
+        y_plot_unw = y_mother[indices_unw]
+        z_plot_unw = z_mother[indices_unw]
+    else:
+        x_plot_unw = x_mother
+        y_plot_unw = y_mother
+        z_plot_unw = z_mother
+
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(x_mother, y_mother, z_mother, s=1, alpha=0.5, c='blue')
+    ax.scatter(x_plot_unw, y_plot_unw, z_plot_unw, s=1, alpha=0.5, c='blue')
     plot_decay_volume(ax)
     ax.set_xlabel(r"$x_{\mathrm{mother}}$")
     ax.set_ylabel(r"$y_{\mathrm{mother}}$")
@@ -549,16 +296,45 @@ def plot_histograms(quantities, output_path):
     plt.savefig(os.path.join(output_path, "decay_positions_unweighted.pdf"), bbox_inches='tight')
     plt.close()
 
-    # 3D scatter plot of (x_mother, y_mother, z_mother) weighted by P_decay
+    # 3D scatter plot of (x_mother, y_mother, z_mother) weighted by P_decay_mother
+    # Select N_entries/10 events using P_decay_mother as weights
+    N_selected = len(x_mother) // 10
+    max_selected = 10000
+    if N_selected > max_selected:
+        N_selected = max_selected
+
+    if N_selected > len(x_mother):
+        N_selected = len(x_mother)
+
+    if N_selected > 0:
+        # Normalize the decay probabilities
+        probabilities = P_decay_mother / P_decay_mother.sum()
+        np.random.seed(24)  # Different seed for variety
+        try:
+            indices_w = np.random.choice(len(x_mother), size=N_selected, replace=False, p=probabilities)
+        except ValueError as e:
+            print(f"Error during weighted sampling: {e}")
+            indices_w = np.random.choice(len(x_mother), size=N_selected, replace=False)
+        
+        x_plot_w = x_mother[indices_w]
+        y_plot_w = y_mother[indices_w]
+        z_plot_w = z_mother[indices_w]
+    else:
+        x_plot_w = np.array([])
+        y_plot_w = np.array([])
+        z_plot_w = np.array([])
+
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    ax.scatter(x_mother, y_mother, z_mother, s=1, alpha=0.1, c='blue', label='All Decays')
+    if N_selected > 0:
+        ax.scatter(x_plot_w, y_plot_w, z_plot_w, s=1, alpha=0.5, c='red', label=f'Selected {N_selected} Decays')
     plot_decay_volume(ax)
     ax.set_xlabel(r"$x_{\mathrm{mother}}$")
     ax.set_ylabel(r"$y_{\mathrm{mother}}$")
     ax.set_zlabel(r"$z_{\mathrm{mother}}$")
     plt.title("Decay Positions of LLP (Weighted by $P_{\\mathrm{decay}}$)")
-    plt.legend()
+    if N_selected > 0:
+        plt.legend()
     plt.tight_layout()
     plt.savefig(os.path.join(output_path, "decay_positions_weighted.pdf"), bbox_inches='tight')
     plt.close()
@@ -581,15 +357,68 @@ def plot_histograms(quantities, output_path):
     plt.close()
 
     # Weighted 2D scatter plot of x and y decay coordinates for z_mother < 33
+    # Select N_entries/10 events using P_decay_mother as weights within the mask
+    x_masked = x_mother[mask_z]
+    y_masked = y_mother[mask_z]
+    P_decay_masked = P_decay_mother[mask_z]
+    total_masked = len(x_masked)
+    N_selected_xy = total_masked // 10
+    if N_selected_xy > max_selected:
+        N_selected_xy = max_selected
+    if N_selected_xy > total_masked:
+        N_selected_xy = total_masked
+
+    if N_selected_xy > 0:
+        probabilities_xy = P_decay_masked / P_decay_masked.sum()
+        np.random.seed(100)  # Different seed for variety
+        try:
+            indices_xy = np.random.choice(total_masked, size=N_selected_xy, replace=False, p=probabilities_xy)
+        except ValueError as e:
+            print(f"Error during weighted sampling for 2D plot: {e}")
+            indices_xy = np.random.choice(total_masked, size=N_selected_xy, replace=False)
+        
+        x_plot_xy_w = x_masked[indices_xy]
+        y_plot_xy_w = y_masked[indices_xy]
+    else:
+        x_plot_xy_w = np.array([])
+        y_plot_xy_w = np.array([])
+
     plt.figure(figsize=(8,6))
-    scatter = plt.scatter(x_mother[mask_z], y_mother[mask_z], s=1, alpha=0.5, c=P_decay_mother[mask_z], cmap='viridis')
-    cbar = plt.colorbar(scatter)
-    cbar.set_label("$P_{\\mathrm{decay}}$")
+    if N_selected_xy > 0:
+        plt.scatter(x_plot_xy_w, y_plot_xy_w, s=1, alpha=0.5, c='red', label=f'Selected {N_selected_xy} Decays')
     plt.xlabel(r"$x_{\mathrm{mother}}$ [m]")
     plt.ylabel(r"$y_{\mathrm{mother}}$ [m]")
     plt.title("Decay Positions (z < 33 m) Weighted by $P_{\\mathrm{decay}}$")
+    if N_selected_xy > 0:
+        plt.legend()
     plt.tight_layout()
     plt.savefig(os.path.join(output_path, "decay_positions_xy_weighted_z_less_33.pdf"), bbox_inches='tight')
+    plt.close()
+
+    # ===========================
+    # New Histogram: Channel vs ifAllPoint/N_events
+    # ===========================
+
+    # Extract ifAllPoint_counts and compute ratios
+    ifAllPoint_counts = quantities.get('ifAllPoint_counts', {})
+    channel_names = list(channels.keys())
+    ifAllPoint_ratios = []
+    for ch in channel_names:
+        N_events = channels[ch]['size']
+        ifAllPoint = ifAllPoint_counts.get(ch, 0)
+        ratio = ifAllPoint / N_events if N_events > 0 else 0
+        ifAllPoint_ratios.append(ratio)
+
+    # Plot the histogram
+    plt.figure(figsize=(10, 6))
+    plt.bar(channel_names, ifAllPoint_ratios, color='green', edgecolor='black')
+    plt.title("All Decay Products Point to Detectors per Channel")
+    plt.xlabel("Channel")
+    plt.ylabel("All decay products point to detectors")
+    plt.ylim(0, 1.05)  # Since it's a ratio
+    plt.xticks(rotation=45)
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_path, "channels_ifAllPoint_ratio.pdf"), bbox_inches='tight')
     plt.close()
 
 def main():
@@ -603,7 +432,7 @@ def main():
     llp_dict = parse_filenames(directory)
 
     # Step 2: User selection
-    selected_file, selected_llp = user_selection(llp_dict)
+    selected_file, selected_llp, selected_mass, selected_lifetime, selected_mixing_patterns = user_selection(llp_dict)
 
     # Set plots_directory to 'plots/selected_llp'
     plots_directory = os.path.join('plots', selected_llp)
@@ -640,7 +469,7 @@ def main():
         print(f"Data table with P_decay, energy, z_mother has been exported to '{output_path}/data_table.txt'.")
 
     # Step 7: Plot histograms
-    plot_histograms(quantities, output_path)
+    plot_histograms(quantities, channels, output_path)
 
 if __name__ == '__main__':
     main()
