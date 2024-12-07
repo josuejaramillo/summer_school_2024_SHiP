@@ -61,6 +61,7 @@ Once this is done, the lib path has to be specified in the script `funcs/decayPr
   - `TwoBodyDecay.py`: Contains functions for simulating two-body decays.
   - `boost.py`: Contains functions for boosting decay products to the lab frame.
   - `kinematics.py`: Contains functions for handling kinematic distributions and interpolations.
+  - `selecting_processing.py`: code to be used by the post-processing scripts.
   - `ship_volume.py`: Contains geometry of the SHiP decay volume for making plots.
 
 - Main code `simulate.py`: the script to run the decay simulation. 
@@ -68,7 +69,7 @@ Once this is done, the lib path has to be specified in the script `funcs/decayPr
 - Post-processing:
   - `events_analysis.py`: the script computing various distributions with the decaying LLP and its decay products: position of the decay vertices, energy distributions, multiplicity, etc. The output is saved in the folder `plots/<LLP>/<GivenLLP>`.
   - `total-plots.py`: the script making the plots of some averaged quantities, such as the polar acceptance, total geometric acceptance, mean decay probability, etc. The output is a single plot saved in the folder `plots/<LLP>`.
-  - `event-display.py`: the script making .pdf and interactive .html plots showing the decay point of the LLP, the direction of its momentum, and the directions of its decay products.
+  - `event-display.py`: the script making .pdf and interactive .html plots showing the decay point of the LLP, the direction of its momentum, and the directions of its decay products. The output is the event display of 10 random events for the selected decay mode saved in the folder `plots/<LLP>/eventDisplay/<GivenLLP>`.
 
 ## Output files
 
