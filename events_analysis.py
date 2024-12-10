@@ -9,9 +9,9 @@ from mpl_toolkits.mplot3d import Axes3D
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from funcs.selecting_processing import parse_filenames, user_selection, read_file  # Importing common functions
 
-def plot_channels(channels, finalEvents, output_path):
+def plot_channels(channels, finalEvents, output_path, llp_name, mass, lifetime):
     """
-    Plots histogram for channels.
+    Plots histogram for channels and adds LLP information text.
     """
     channel_names = list(channels.keys())
     channel_sizes = [channels[ch]['size'] for ch in channel_names]
@@ -22,6 +22,19 @@ def plot_channels(channels, finalEvents, output_path):
     plt.xlabel("Channel")
     plt.ylabel("Number of events")
     plt.xticks(rotation=45)
+
+    # Add LLP information text in the top right corner
+    textstr = f"LLP: {llp_name}\nMass: {mass} GeV\nLifetime: {lifetime} s"
+    plt.text(0.95, 0.95, textstr,
+             horizontalalignment='right',
+             verticalalignment='top',
+             transform=plt.gca().transAxes,
+             fontsize=10,
+             bbox=dict(boxstyle="round,pad=0.3", 
+                       facecolor="white", 
+                       edgecolor="black", 
+                       alpha=0.5))
+
     plt.tight_layout()
     plt.savefig(os.path.join(output_path, "channels.pdf"), bbox_inches='tight')
     plt.close()
@@ -46,7 +59,9 @@ def extract_quantities(channels):
         'decay_products_counts': [],  # total decay products per event
         'charged_decay_products_counts': [],  # charged decay products per event
         'decay_products_per_event_counts': {},  # counts of dedicated products per event
-        'ifAllPoint_counts': Counter(),  # New: counts of events where all decay products point to detectors per channel
+        'ifAllPoint_counts': Counter(),  # Weighted counts of events where all decay products point to detectors per channel
+        'sum_P_decay_mother_per_channel': Counter(),  # Sum of P_decay_mother per channel
+        'ifAllPoint_ratios': {},  # Ratio per channel
     }
 
     # Initialize per-event counts for dedicated decay products
@@ -83,6 +98,9 @@ def extract_quantities(channels):
             quantities['x_mother'].append(x_mother)
             quantities['y_mother'].append(y_mother)
             quantities['z_mother'].append(z_mother)
+
+            # Accumulate the sum of P_decay_mother for this channel
+            quantities['sum_P_decay_mother_per_channel'][channel] += P_decay_mother
 
             # Now, count the number of decay products
             decay_products_count = 0
@@ -159,21 +177,34 @@ def extract_quantities(channels):
                 count = event_decay_products_counter.get(ptype, 0)
                 quantities['decay_products_per_event_counts'][ptype].append(count)
 
-            # Update ifAllPoint_counts
+            # Update ifAllPoint_counts with weighted count
             if all_point:
-                quantities['ifAllPoint_counts'][channel] += 1
+                quantities['ifAllPoint_counts'][channel] += P_decay_mother  # Modified line
+
+    # After processing all events, compute the ratios
+    for channel in channels.keys():
+        sum_P_decay = quantities['sum_P_decay_mother_per_channel'][channel]
+        if sum_P_decay > 0:
+            ratio = quantities['ifAllPoint_counts'][channel] / sum_P_decay
+        else:
+            ratio = 0
+        quantities['ifAllPoint_ratios'][channel] = ratio
 
     return quantities
 
-def plot_histograms(quantities, channels, output_path):
+def plot_histograms(quantities, channels, output_path, llp_name, mass, lifetime):
     """
     Plots the required histograms and saves them in the output_path directory.
     All histograms are normalized to represent probability densities.
+    Adds LLP information text to each plot.
     """
     import os
     # Ensure output directory exists
     if not os.path.exists(output_path):
         os.makedirs(output_path)
+
+    # Prepare the text string for plots
+    textstr = f"LLP: {llp_name}\nMass: {mass} GeV\nLifetime: {lifetime} s"
 
     # Convert relevant quantities to numpy arrays for easier handling
     energy_mother = np.array(quantities['energy_mother'])
@@ -189,6 +220,16 @@ def plot_histograms(quantities, channels, output_path):
     plt.xlabel("$E_{\\mathrm{LLP}}$ [GeV]")
     plt.ylabel("Probability Density")
     plt.title("LLP Energy Distribution (Unweighted)")
+    # Add LLP information text
+    plt.text(0.95, 0.95, textstr,
+             horizontalalignment='right',
+             verticalalignment='top',
+             transform=plt.gca().transAxes,
+             fontsize=10,
+             bbox=dict(boxstyle="round,pad=0.3", 
+                       facecolor="white", 
+                       edgecolor="black", 
+                       alpha=0.5))
     plt.tight_layout()
     plt.savefig(os.path.join(output_path, "energy_mother_unweighted.pdf"), bbox_inches='tight')
     plt.close()
@@ -200,6 +241,16 @@ def plot_histograms(quantities, channels, output_path):
     plt.xlabel("$E_{\\mathrm{LLP}}$ [GeV]")
     plt.ylabel("Probability Density")
     plt.title("LLP Energy Distribution (Weighted by $P_{\\mathrm{decay}}$)")
+    # Add LLP information text
+    plt.text(0.95, 0.95, textstr,
+             horizontalalignment='right',
+             verticalalignment='top',
+             transform=plt.gca().transAxes,
+             fontsize=10,
+             bbox=dict(boxstyle="round,pad=0.3", 
+                       facecolor="white", 
+                       edgecolor="black", 
+                       alpha=0.5))
     plt.tight_layout()
     plt.savefig(os.path.join(output_path, "energy_mother_weighted.pdf"), bbox_inches='tight')
     plt.close()
@@ -212,6 +263,16 @@ def plot_histograms(quantities, channels, output_path):
     plt.xlabel("$P_{\\mathrm{decay,LLP}}$")
     plt.ylabel("Probability Density")
     plt.title("LLP Decay Probability Distribution")
+    # Add LLP information text
+    plt.text(0.95, 0.95, textstr,
+             horizontalalignment='right',
+             verticalalignment='top',
+             transform=plt.gca().transAxes,
+             fontsize=10,
+             bbox=dict(boxstyle="round,pad=0.3", 
+                       facecolor="white", 
+                       edgecolor="black", 
+                       alpha=0.5))
     plt.tight_layout()
     plt.savefig(os.path.join(output_path, "P_decay_mother.pdf"), bbox_inches='tight')
     plt.close()
@@ -223,6 +284,16 @@ def plot_histograms(quantities, channels, output_path):
     plt.xlabel("$z_{\\mathrm{decay,LLP}}$ [m]")
     plt.ylabel("Probability Density")
     plt.title("LLP Decay Positions (Weighted by $P_{\\mathrm{decay}}$)")
+    # Add LLP information text
+    plt.text(0.95, 0.95, textstr,
+             horizontalalignment='right',
+             verticalalignment='top',
+             transform=plt.gca().transAxes,
+             fontsize=10,
+             bbox=dict(boxstyle="round,pad=0.3", 
+                       facecolor="white", 
+                       edgecolor="black", 
+                       alpha=0.5))
     plt.tight_layout()
     plt.savefig(os.path.join(output_path, "z_mother_weighted.pdf"), bbox_inches='tight')
     plt.close()
@@ -234,6 +305,16 @@ def plot_histograms(quantities, channels, output_path):
     plt.xlabel("$z_{\\mathrm{decay,LLP}}$ [m]")
     plt.ylabel("Probability Density")
     plt.title("LLP Decay Positions (Unweighted)")
+    # Add LLP information text
+    plt.text(0.95, 0.95, textstr,
+             horizontalalignment='right',
+             verticalalignment='top',
+             transform=plt.gca().transAxes,
+             fontsize=10,
+             bbox=dict(boxstyle="round,pad=0.3", 
+                       facecolor="white", 
+                       edgecolor="black", 
+                       alpha=0.5))
     plt.tight_layout()
     plt.savefig(os.path.join(output_path, "z_mother_unweighted.pdf"), bbox_inches='tight')
     plt.close()
@@ -248,6 +329,16 @@ def plot_histograms(quantities, channels, output_path):
     plt.ylabel("Probability Density")
     plt.title("Decay Products Multiplicity")
     plt.legend()
+    # Add LLP information text
+    plt.text(0.95, 0.95, textstr,
+             horizontalalignment='right',
+             verticalalignment='top',
+             transform=plt.gca().transAxes,
+             fontsize=10,
+             bbox=dict(boxstyle="round,pad=0.3", 
+                       facecolor="white", 
+                       edgecolor="black", 
+                       alpha=0.5))
     plt.tight_layout()
     plt.savefig(os.path.join(output_path, "decay_products_counts_merged.pdf"), bbox_inches='tight')
     plt.close()
@@ -265,6 +356,16 @@ def plot_histograms(quantities, channels, output_path):
             plt.ylabel("Probability Density")
             plt.title(f"Amount of {ptype} per Event")
             plt.xticks(bins)
+            # Add LLP information text
+            plt.text(0.95, 0.95, textstr,
+                     horizontalalignment='right',
+                     verticalalignment='top',
+                     transform=plt.gca().transAxes,
+                     fontsize=10,
+                     bbox=dict(boxstyle="round,pad=0.3", 
+                               facecolor="white", 
+                               edgecolor="black", 
+                               alpha=0.5))
             plt.tight_layout()
             plt.savefig(os.path.join(output_path, f"decay_products_counts_{ptype}.pdf"), bbox_inches='tight')
             plt.close()
@@ -292,6 +393,16 @@ def plot_histograms(quantities, channels, output_path):
     ax.set_ylabel(r"$y_{\mathrm{mother}}$")
     ax.set_zlabel(r"$z_{\mathrm{mother}}$")
     plt.title("Decay Positions of LLP (Unweighted)")
+    # Add LLP information text
+    ax.text2D(0.95, 0.95, textstr,
+              horizontalalignment='right',
+              verticalalignment='top',
+              transform=ax.transAxes,
+              fontsize=10,
+              bbox=dict(boxstyle="round,pad=0.3", 
+                        facecolor="white", 
+                        edgecolor="black", 
+                        alpha=0.5))
     plt.tight_layout()
     plt.savefig(os.path.join(output_path, "decay_positions_unweighted.pdf"), bbox_inches='tight')
     plt.close()
@@ -315,7 +426,7 @@ def plot_histograms(quantities, channels, output_path):
         except ValueError as e:
             print(f"Error during weighted sampling: {e}")
             indices_w = np.random.choice(len(x_mother), size=N_selected, replace=False)
-        
+
         x_plot_w = x_mother[indices_w]
         y_plot_w = y_mother[indices_w]
         z_plot_w = z_mother[indices_w]
@@ -335,6 +446,16 @@ def plot_histograms(quantities, channels, output_path):
     plt.title("Decay Positions of LLP (Weighted by $P_{\\mathrm{decay}}$)")
     if N_selected > 0:
         plt.legend()
+    # Add LLP information text
+    ax.text2D(0.95, 0.95, textstr,
+              horizontalalignment='right',
+              verticalalignment='top',
+              transform=ax.transAxes,
+              fontsize=10,
+              bbox=dict(boxstyle="round,pad=0.3", 
+                        facecolor="white", 
+                        edgecolor="black", 
+                        alpha=0.5))
     plt.tight_layout()
     plt.savefig(os.path.join(output_path, "decay_positions_weighted.pdf"), bbox_inches='tight')
     plt.close()
@@ -352,6 +473,16 @@ def plot_histograms(quantities, channels, output_path):
     plt.xlabel(r"$x_{\mathrm{mother}}$ [m]")
     plt.ylabel(r"$y_{\mathrm{mother}}$ [m]")
     plt.title("Decay Positions (z < 33 m) Unweighted")
+    # Add LLP information text
+    plt.text(0.95, 0.95, textstr,
+             horizontalalignment='right',
+             verticalalignment='top',
+             transform=plt.gca().transAxes,
+             fontsize=10,
+             bbox=dict(boxstyle="round,pad=0.3", 
+                       facecolor="white", 
+                       edgecolor="black", 
+                       alpha=0.5))
     plt.tight_layout()
     plt.savefig(os.path.join(output_path, "decay_positions_xy_unweighted_z_less_33.pdf"), bbox_inches='tight')
     plt.close()
@@ -376,7 +507,7 @@ def plot_histograms(quantities, channels, output_path):
         except ValueError as e:
             print(f"Error during weighted sampling for 2D plot: {e}")
             indices_xy = np.random.choice(total_masked, size=N_selected_xy, replace=False)
-        
+
         x_plot_xy_w = x_masked[indices_xy]
         y_plot_xy_w = y_masked[indices_xy]
     else:
@@ -391,6 +522,16 @@ def plot_histograms(quantities, channels, output_path):
     plt.title("Decay Positions (z < 33 m) Weighted by $P_{\\mathrm{decay}}$")
     if N_selected_xy > 0:
         plt.legend()
+    # Add LLP information text
+    plt.text(0.95, 0.95, textstr,
+             horizontalalignment='right',
+             verticalalignment='top',
+             transform=plt.gca().transAxes,
+             fontsize=10,
+             bbox=dict(boxstyle="round,pad=0.3", 
+                       facecolor="white", 
+                       edgecolor="black", 
+                       alpha=0.5))
     plt.tight_layout()
     plt.savefig(os.path.join(output_path, "decay_positions_xy_weighted_z_less_33.pdf"), bbox_inches='tight')
     plt.close()
@@ -399,24 +540,29 @@ def plot_histograms(quantities, channels, output_path):
     # New Histogram: Channel vs ifAllPoint/N_events
     # ===========================
 
-    # Extract ifAllPoint_counts and compute ratios
-    ifAllPoint_counts = quantities.get('ifAllPoint_counts', {})
+    # Extract ifAllPoint_ratios and plot them
+    ifAllPoint_ratios = quantities.get('ifAllPoint_ratios', {})
     channel_names = list(channels.keys())
-    ifAllPoint_ratios = []
-    for ch in channel_names:
-        N_events = channels[ch]['size']
-        ifAllPoint = ifAllPoint_counts.get(ch, 0)
-        ratio = ifAllPoint / N_events if N_events > 0 else 0
-        ifAllPoint_ratios.append(ratio)
+    ratios = [ifAllPoint_ratios.get(ch, 0) for ch in channel_names]
 
     # Plot the histogram
     plt.figure(figsize=(10, 6))
-    plt.bar(channel_names, ifAllPoint_ratios, color='green', edgecolor='black')
+    plt.bar(channel_names, ratios, color='green', edgecolor='black')
     plt.title("All Decay Products Point to Detectors per Channel")
     plt.xlabel("Channel")
-    plt.ylabel("All decay products point to detectors")
+    plt.ylabel("All decay products point to detectors (Ratio)")
     plt.ylim(0, 1.05)  # Since it's a ratio
     plt.xticks(rotation=45)
+    # Add LLP information text
+    plt.text(0.95, 0.95, textstr,
+             horizontalalignment='right',
+             verticalalignment='top',
+             transform=plt.gca().transAxes,
+             fontsize=10,
+             bbox=dict(boxstyle="round,pad=0.3", 
+                       facecolor="white", 
+                       edgecolor="black", 
+                       alpha=0.5))
     plt.tight_layout()
     plt.savefig(os.path.join(output_path, "channels_ifAllPoint_ratio.pdf"), bbox_inches='tight')
     plt.close()
@@ -447,8 +593,8 @@ def main():
     filepath = os.path.join(directory, selected_file)
     finalEvents, epsilon_polar, epsilon_azimuthal, br_visible_val, channels = read_file(filepath)
 
-    # Step 4: Plot channels
-    plot_channels(channels, finalEvents, output_path)
+    # Step 4: Plot channels with LLP info
+    plot_channels(channels, finalEvents, output_path, selected_llp, selected_mass, selected_lifetime)
 
     # Step 5: Extract quantities
     quantities = extract_quantities(channels)
@@ -468,8 +614,8 @@ def main():
 
         print(f"Data table with P_decay, energy, z_mother has been exported to '{output_path}/data_table.txt'.")
 
-    # Step 7: Plot histograms
-    plot_histograms(quantities, channels, output_path)
+    # Step 7: Plot histograms with LLP info
+    plot_histograms(quantities, channels, output_path, selected_llp, selected_mass, selected_lifetime)
 
 if __name__ == '__main__':
     main()

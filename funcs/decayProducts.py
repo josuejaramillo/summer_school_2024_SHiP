@@ -243,6 +243,7 @@ def process_events_with_pythia(decay_events_list, mass):
 
         # Process the event through Pythia
         if not pythia.forceHadronLevel():
+            #uncomment the line below is you want to see the decay products chain resulting by processing the decay in pythia during the simulation
             #pythia.event.list()
             pass
 
